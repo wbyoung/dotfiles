@@ -1,0 +1,18 @@
+set nocompatible
+let mapleader=","
+
+if filereadable(expand("$VIM_SETTINGS/vundles.vim"))
+  source $VIM_SETTINGS/vundles.vim
+endif
+
+for fpath in split(globpath('$VIM_SETTINGS/extras', '*.vim'), '\n')
+  exe 'source' fpath
+endfor
+
+for fpath in split(globpath('$VIM_SETTINGS/plugin-settings', '*.vim'), '\n')
+  exe 'source' fpath
+endfor
+
+for fpath in split(globpath('$VIM_SETTINGS/settings', '*.vim'), '\n')
+  exe 'source' fpath
+endfor

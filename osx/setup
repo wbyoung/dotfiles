@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+
+if [[ "$(defaults read localhost.wbyoung.defaults setup 2>/dev/null)" = "1" ]] && \
+   [[ "$OSX_SETUP" != "1" ]]; then
+  echo "Setup has already been performed. Re-run with OSX_SETUP=1" 1>&2
+  exit 1
+fi
+
+# Ask for the administrator password upfront
+sudo -v
+
+if [[ "$?" != "0" ]]; then
+  exit 1
+fi
+
+###############################################################################
+# General UI/UX                                                               #
+###############################################################################
+
+# Set standby delay to 1.5 hours (default is 1 hour)
+sudo pmset -a standbydelay 5400
+
+# Menu bar: hide unwanted items
+for domain in ~/Library/Preferences/ByHost/com.apple.systemuiserver.*; do
+  defaults write "${domain}" dontAutoLoad -array \
+    "/System/Library/CoreServices/Menu Extras/Bluetooth.menu" \
+    "/System/Library/CoreServices/Menu Extras/TimeMachine.menu" \
+    "/System/Library/CoreServices/Menu Extras/Volume.menu" \
+    "/System/Library/CoreServices/Menu Extras/User.menu"
+done
+defaults write com.apple.systemuiserver menuExtras -array \
+  "/System/Library/CoreServices/Menu Extras/AirPort.menu" \
+  "/System/Library/CoreServices/Menu Extras/Battery.menu" \
+  "/System/Library/CoreServices/Menu Extras/Clock.menu"
+
+# Save to disk (not to iCloud) by default
+defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+
+# Disable automatic termination of inactive apps
+defaults write NSGlobalDomain NSDisableAutomaticTermination -bool true
+
+# Reveal IP address, hostname, OS version, etc. when clicking the clock
+# in the login window
+sudo defaults write /Library/Preferences/com.apple.loginwindow AdminHostInfo HostName
+
+# Restart automatically if the computer freezes
+sudo systemsetup -setrestartfreeze on
+
+###############################################################################
+# Finder                                                                      #
+###############################################################################
+
+# Disable the warning when changing a file extension
+defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+
+# Enable spring loading for directories
+defaults write NSGlobalDomain com.apple.springing.enabled -bool true
+
+# Avoid creating .DS_Store files on network volumes
+defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+
+# Enable snap-to-grid for icons on the desktop
+/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
+
+# Arrange by kind in other icon views
+/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:arrangeBy kind" ~/Library/Preferences/com.apple.finder.plist
+/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:arrangeBy kind" ~/Library/Preferences/com.apple.finder.plist
+
+# Use icon view in all Finder windows by default
+# Four-letter codes for the other view modes: `Nlsv`, `clmv`, `Flwv`
+defaults write com.apple.finder FXPreferredViewStyle -string "icnv"
+
+# Show the ~/Library folder
+chflags nohidden ~/Library
+
+# Show the /Volumes folder
+sudo chflags nohidden /Volumes
+
+###############################################################################
+# Dock, Dashboard, and hot corners                                            #
+###############################################################################
+
+# Set the icon size of Dock items to 48 pixels
+defaults write com.apple.dock tilesize -int 48
+
+# Show indicator lights for open applications in the Dock
+defaults write com.apple.dock show-process-indicators -bool true
+
+# Automatically hide and show the Dock
+defaults write com.apple.dock autohide -bool false
+
+# Make Dock icons of hidden applications translucent
+defaults write com.apple.dock showhidden -bool true
+
+###############################################################################
+# Mail                                                                        #
+###############################################################################
+
+# Copy email addresses as `foo@example.com` instead of `Foo Bar <foo@example.com>` in Mail.app
+defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+
+###############################################################################
+# Terminal                                                                    #
+###############################################################################
+
+# Only use UTF-8 in Terminal.app
+defaults write com.apple.terminal StringEncodings -array 4
+
+# Use a modified version of the Solarized Dark theme by default in Terminal.app
+osascript <<EOD
+
+tell application "Terminal"
+
+  local allOpenedWindows
+  local initialOpenedWindows
+  local windowID
+  set themeName to "Solarized Dark"
+
+  (* Store the IDs of all the open terminal windows. *)
+  set initialOpenedWindows to id of every window
+
+  (* Open the custom theme so that it gets added to the list
+     of available terminal themes (note: this will open two
+     additional terminal windows). *)
+  do shell script "open '$HOME/.dotfiles/osx/terminal-themes/" & themeName & ".terminal'"
+
+  (* Wait a little bit to ensure that the custom theme is added. *)
+  delay 1
+
+  (* Set the custom theme as the default terminal theme. *)
+  set default settings to settings set themeName
+
+  (* Get the IDs of all the currently opened terminal windows. *)
+  set allOpenedWindows to id of every window
+
+  repeat with windowID in allOpenedWindows
+
+    (* Close the additional windows that were opened in order
+       to add the custom theme to the list of terminal themes. *)
+    if initialOpenedWindows does not contain windowID then
+      close (every window whose id is windowID)
+
+    (* Change the theme for the initial opened terminal windows
+       to remove the need to close them in order for the custom
+       theme to be applied. *)
+    else
+      set current settings of tabs of (every window whose id is windowID) to settings set themeName
+    end if
+
+  end repeat
+
+end tell
+
+EOD
+
+###############################################################################
+# TextEdit                                                                    #
+###############################################################################
+
+# Use plain text mode for new TextEdit documents
+defaults write com.apple.TextEdit RichText -int 0
+# Open and save files as UTF-8 in TextEdit
+defaults write com.apple.TextEdit PlainTextEncoding -int 4
+defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+
+###############################################################################
+# Photos                                                                      #
+###############################################################################
+
+# Prevent Photos from opening automatically when devices are plugged in
+defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
+
+###############################################################################
+# Google Chrome & Google Chrome Canary                                        #
+###############################################################################
+
+node <<EOD
+var path = '$HOME/Library/Application Support/Google/Chrome/Default/Preferences';
+var fs = require('fs');
+var prefs = JSON.parse(fs.readFileSync(path));
+
+prefs.session = prefs.session || {};
+prefs.session.restore_on_startup = 1;
+fs.writeFileSync(path, JSON.stringify(prefs));
+EOD
+
+###############################################################################
+# Kill affected applications                                                  #
+###############################################################################
+
+for app in "Address Book" "cfprefsd" "Dock" "Finder" "Google Chrome" \
+  "Google Chrome Canary" "Mail" "Photos" "SystemUIServer"; do
+  killall "${app}" &> /dev/null
+done
+echo "Done. Note that some of these changes require a logout/restart to take effect."

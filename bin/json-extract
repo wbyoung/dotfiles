@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+var input = '';
+var extract = function(data, property) {
+  var parts = property.split('.');
+  var lookup = parts[0];
+  var remaining = parts.slice(1).join('.');
+  var sub = function(obj) {
+    var matches = {};
+    var lastMatch;
+    for (var key in obj) {
+      if (key.match(new RegExp(lookup))) {
+        matches[key] = lastMatch = extract(obj[key], remaining);
+      }
+    }
+    return Object.keys(matches).length > 1 ? matches : lastMatch;
+  };
+
+  if (!lookup) { return data; }
+  else if (Array.isArray(data)) {
+    return data.map(sub);
+  }
+  else { return sub(data); }
+};
+
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', function(d) { input += d; });
+process.stdin.on('end', function() {
+  console.log(JSON.stringify(extract(JSON.parse(input), process.argv[2] || ''), null, 2));
+});

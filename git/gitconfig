@@ -1,0 +1,27 @@
+[include]
+    path = ~/.gitconfig.local
+[alias]
+    co = checkout
+    br = branch
+    ci = commit
+    st = status -s
+    gl = log --graph --pretty='%h %s'
+    l  = log --pretty='%h %s'
+    unstage    = reset HEAD --
+    last       = log -1 HEAD
+    out        = log --branches --not --remotes --decorate --oneline
+    branch-out = log @{upstream}..HEAD --decorate --oneline
+    fetch-truth = "!f() { git fetch origin ${1-master}:${1-master}; };f"
+[core]
+    editor = vim
+    excludesfile = ~/.gitignore_global
+[diff]
+    renames = true
+[color]
+    ui = true
+[push]
+    default = simple
+[help]
+    autocorrect = 1
+[github]
+	user = wbyoung

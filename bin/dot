@@ -1,0 +1,125 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'fileutils'
+require 'pathname'
+
+$OPTIONS = {}
+
+# TODO: is `xcode-select --install` required on a fresh machine?
+# TODO: is `sudo apt-get install build-essential` required on a fresh machine?
+
+def install_all
+  selfupdate
+  install_homebrew if RUBY_PLATFORM.downcase.include?("darwin") and want_to_install?('homebrew')
+  install_linuxbrew if RUBY_PLATFORM.downcase.include?("linux") and want_to_install?('linuxbrew')
+  install_files('zsh', Dir.glob('zshrc')) if want_to_install?('zsh config')
+  install_files('vim', Dir.glob('vim/vimrc')) if want_to_install?('vim config')
+  install_files('git', Dir.glob('git/*')) if want_to_install?('git config')
+  install_files('tmux', Dir.glob('tmux/*')) if want_to_install?('tmux config')
+  install_files('misc', Dir.glob('misc/*')) if want_to_install?('miscellaneous config')
+  run %{osx/setup} if RUBY_PLATFORM.downcase.include?("darwin") and want_to_install?('osx defaults')
+end
+
+def selfupdate
+  info "[selfupdate]"
+
+  run %{git pull origin -q --ff-only}
+end
+
+def install_homebrew
+  info "[homebrew]"
+
+  run %{which brew}
+  run %{ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null} unless $?.success?
+  run %{brew update}
+  run %{brew install cloc coreutils git grc hub mysql postgresql python python3 tmux the_silver_searcher zsh}
+  run %{brew install vim --with-lua --with-luajit}
+  run %{brew cask install --appdir=/Applications flux google-chrome seil}
+end
+
+def install_linuxbrew
+  info "[linuxbrew]"
+
+  # ensure linuxbrew is first on path during this install
+  path = ENV['PATH']
+  ENV['PATH'] = "#{ENV["HOME"]}/.linuxbrew/bin:#{ENV['PATH']}"
+
+  run %{which brew}
+  run %{ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install)" < /dev/null} unless $?.success?
+  run %{brew update}
+  run %{brew install grc hub tmux the_silver_searcher}
+  run %{brew install vim --with-lua --with-luajit}
+
+  ENV['PATH'] = path
+end
+
+def install_files(title, files)
+  info "[#{title}]"
+
+  files.each do |f|
+    file = f.split('/').last
+    source = Pathname.new("#{Dir.getwd}/#{f}").relative_path_from(Pathname.new(ENV["HOME"])).to_s
+    target = "#{ENV["HOME"]}/.#{file}"
+
+    if File.exists?(target) && (!File.symlink?(target) || (File.symlink?(target) && File.readlink(target) != source))
+      error "overwriting #{target}, leaving original at #{target}.backup"
+      run %{mv "$HOME/.#{file}" "$HOME/.#{file}.backup"}
+    end
+
+    run %{ln -nfs "#{source}" "#{target}"}
+  end
+end
+
+private
+
+module Tty extend self
+  def red; regular 31; end
+  def cyan; regular 36; end
+  def magenta; bold 35; end
+  def reset; escape 0; end
+  def regular n; escape "0;#{n}" end
+  def bold n; escape "1;#{n}" end
+  def escape n; "\033[#{n}m" if STDOUT.tty? end
+end
+
+def run(cmd)
+  detail "[exec] #{cmd}"
+  `#{cmd}` unless ENV['DEBUG']
+end
+
+def info(message)
+  puts "#{Tty.cyan}#{message}#{Tty.reset}"
+end
+
+def detail(message)
+  puts "#{Tty.magenta}#{message}#{Tty.reset}"
+end
+
+def error(message)
+  puts "#{Tty.red}#{message}#{Tty.reset}"
+end
+
+def want_to_install?(section)
+  if $OPTIONS[:prompt]
+    print "#{Tty.cyan}install #{section}? #{Tty.magenta}[y/n] #{Tty.reset}"
+    STDIN.gets.chomp == 'y'
+  else
+    true
+  end
+end
+
+if __FILE__ == $0
+  OptionParser.new do |opts|
+    opts.banner = "Usage: install [options]"
+
+    opts.on("-p", "--[no-]prompt") do |flag|
+      $OPTIONS[:prompt] = flag
+    end
+  end.parse!
+
+  Dir.chdir "#{File.dirname(__FILE__)}/.." do
+    install_all
+  end
+
+end

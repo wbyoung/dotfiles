@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#
+# serve coverage info on a local http server using static-server from npm
+
+if ! which static-server &> /dev/null; then
+  npm install -g static-server
+fi
+
+cd coverage && static-server -d -p 2001
