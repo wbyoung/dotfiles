@@ -4,6 +4,8 @@ if [[ "$(defaults read localhost.wbyoung.defaults setup 2>/dev/null)" = "1" ]] &
    [[ "$OSX_SETUP" != "1" ]]; then
   echo "Setup has already been performed. Re-run with OSX_SETUP=1" 1>&2
   exit 1
+else
+  defaults write localhost.wbyoung.defaults setup 1
 fi
 
 # Ask for the administrator password upfront
