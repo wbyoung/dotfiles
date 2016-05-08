@@ -14,7 +14,7 @@ set autoread                    " Reload files changed outside vim
 set hidden                      " See http://items.sjbach.com/319/configuring-vim-right
 set wmh=0                       " Windows need not have height
 set mouse=a                     " Enable mouse
-set encoding=utf-8              " UTF-8 makes the world a better place"
+set encoding=utf-8              " UTF-8 makes the world a better place
 syntax on                       " Turn on syntax highlighting
 
 " Display tabs and trailing spaces visually
