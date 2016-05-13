@@ -5,4 +5,5 @@ set formatoptions+=t,c,r,n
 set spell spelllang=en_us
 
 " Trim trailing whitespace on write
-autocmd FileType c,cpp,java,php,python,javascript,json,ruby,markdown autocmd BufWritePre * :%s/\s\+$//e
+autocmd FileType c,cpp,java,php,python,javascript,json,ruby,markdown
+    \ autocmd BufWritePre * :%s/\s\+$//e
