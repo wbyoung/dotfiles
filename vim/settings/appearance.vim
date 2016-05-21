@@ -16,6 +16,7 @@ set wmh=0                       " Windows need not have height
 set mouse=a                     " Enable mouse
 set encoding=utf-8              " UTF-8 makes the world a better place
 set clipboard=unnamed           " Share * register w/ unnamed (system copy/paste support)
+set noequalalways               " Don't resize when closing splits
 syntax on                       " Turn on syntax highlighting
 
 " Display tabs and trailing spaces visually
