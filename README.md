@@ -10,6 +10,6 @@ sh -c "`curl -fsSL https://raw.githubusercontent.com/wbyoung/dotfiles/master/boo
 
 Inspiration taken from:
 
-- holman/dotfiles
-- skwp-dotfiles
-- atomantic-dotfiles
+- [holman/dotfiles](https://github.com/holman/dotfiles)
+- [skwp/dotfiles](https://github.com/skwp/dotfiles)
+- [atomantic/dotfiles](https://github.com/atomantic/dotfiles)
