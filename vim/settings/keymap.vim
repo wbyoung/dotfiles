@@ -9,3 +9,6 @@ nnoremap +  <C-w>>
 " Quickly move between windows & resize
 nnoremap <C-k> :wincmd k<CR>:resize<CR>
 nnoremap <C-j> :wincmd j<CR>:resize<CR>
+
+" Text selection
+nnoremap gp `[v`]` " reselect pasted text

@@ -30,13 +30,14 @@ Bundle "altercation/vim-colors-solarized"
 Bundle "itchyny/lightline.vim"
 
 " Textobjects
-Bundle "austintaylor/vim-indentobject"
+Bundle "michaeljsmith/vim-indent-object"
 Bundle "kana/vim-textobj-function"
 Bundle "kana/vim-textobj-user"
 Bundle "lucapette/vim-textobj-underscore"
 Bundle "nathanaelkane/vim-indent-guides"
 Bundle "thinca/vim-textobj-function-javascript"
 Bundle "vim-scripts/argtextobj.vim"
+Bundle "bps/vim-textobj-python"
 
 " Search
 Bundle "rking/ag.vim"
@@ -63,6 +64,7 @@ Bundle "tpope/vim-unimpaired"
 Bundle "vim-scripts/AnsiEsc.vim.git"
 Bundle "vim-scripts/sudo.vim"
 Bundle "goldfeld/ctrlr.vim"
+Bundle "terryma/vim-expand-region"
 
 " Required by rking/ag.vim
 Bundle "MarcWeber/vim-addon-mw-utils.git"
