@@ -65,6 +65,7 @@ Bundle "vim-scripts/AnsiEsc.vim.git"
 Bundle "vim-scripts/sudo.vim"
 Bundle "goldfeld/ctrlr.vim"
 Bundle "terryma/vim-expand-region"
+Bundle "scrooloose/nerdcommenter"
 
 " Required by rking/ag.vim
 Bundle "MarcWeber/vim-addon-mw-utils.git"
