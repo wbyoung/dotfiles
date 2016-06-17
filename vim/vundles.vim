@@ -14,6 +14,7 @@ Bundle "gmarik/vundle"
 
 " Languages
 Bundle 'sheerun/vim-polyglot'
+Bundle 'davidhalter/jedi-vim'
 Bundle 'garbas/vim-snipmate.git'
 Bundle 'honza/vim-snippets'
 Bundle 'jtratner/vim-flavored-markdown.git'
