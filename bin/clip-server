@@ -1,0 +1,20 @@
+#/usr/bin/env bash
+
+cat <<EOF
+Add the following to ~/.ssh/config:
+
+Host myhost
+  HostName fqdn-or-ip
+  User user
+  RemoteForward 2224 127.0.0.1:2224
+
+
+EOF
+
+echo "Running clip server..."
+
+while [ true ]; do
+  content=$(nc -l 2224)
+  terminal-notifier -message "$content" -title 'Remote Copy' -sender com.apple.TextEdit -group localhost.terminal.remote-pbcopy
+  pbcopy <<< "$content"
+done
