@@ -19,6 +19,7 @@ Bundle 'garbas/vim-snipmate.git'
 Bundle 'honza/vim-snippets'
 Bundle 'jtratner/vim-flavored-markdown.git'
 Bundle 'scrooloose/syntastic.git'
+Bundle 'flowtype/vim-flow'
 
 " Git
 Bundle "mattn/gist-vim"
