@@ -16,6 +16,7 @@ def install_all
   install_files('zsh', Dir.glob('zshrc')) if want_to_install?('zsh config')
   install_files('vim', Dir.glob('vim/vimrc')) if want_to_install?('vim config')
   install_files('git', Dir.glob('git/*')) if want_to_install?('git config')
+  install_files('docker', Dir.glob('docker/*')) if want_to_install?('docker config')
   install_files('tmux', Dir.glob('tmux/*')) if want_to_install?('tmux config')
   install_files('misc', Dir.glob('misc/*')) if want_to_install?('miscellaneous config')
   run %{osx/setup} if RUBY_PLATFORM.downcase.include?("darwin") and want_to_install?('osx defaults')
