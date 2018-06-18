@@ -27,3 +27,5 @@
 	user = wbyoung
 [rebase]
 	autosquash = true
+[commit]
+	gpgsign = true
