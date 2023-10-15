@@ -1,5 +1,6 @@
 set nocompatible
 let mapleader=","
+let g:snipMate = { 'snippet_version' : 1 }
 
 if filereadable(expand("$VIM_SETTINGS/vundles.vim"))
   source $VIM_SETTINGS/vundles.vim

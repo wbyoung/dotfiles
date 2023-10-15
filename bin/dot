@@ -34,10 +34,8 @@ def install_homebrew
   run %{which brew}
   run %{ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null} unless $?.success?
   run %{brew update}
-  run %{brew install cloc coreutils git grc hub jq mysql postgresql python python3 tmux terminal-notifier the_silver_searcher zsh}
-  run %{brew install reattach-to-user-namespace --with-wrap-pbcopy-and-pbpaste}
-  run %{brew install vim --with-lua --with-luajit}
-  run %{brew cask install --appdir=/Applications flux iterm2 google-chrome}
+  run %{brew install cloc coreutils git gpg grc hub jq mysql postgresql python python3 tmux terminal-notifier the_silver_searcher zsh reattach-to-user-namespace vim}
+  run %{brew install --cask --appdir=/Applications flux iterm2 google-chrome}
 end
 
 def install_linuxbrew

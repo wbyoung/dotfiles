@@ -29,3 +29,5 @@
 	autosquash = true
 [commit]
 	gpgsign = true
+[safe]
+	directory = /usr/local/Homebrew

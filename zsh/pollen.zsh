@@ -78,6 +78,7 @@ pollen-update() {
 
 -pollen-locate-all-sh() {
   files=("$1/"*.sh(N))
+  files=(${files:#*testrunner*}) # see https://stackoverflow.com/a/41876600
 
   [[ -n "$files" ]] && echo "${(F)files}"
 }

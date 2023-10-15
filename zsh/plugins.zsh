@@ -7,5 +7,5 @@ pollinate tonyseek/oh-my-zsh-virtualenv-prompt#plugins/virtualenv-prompt --no-so
 
 plugins=(git github gulp virtualenv-prompt)
 pollinate robbyrussell/oh-my-zsh
-pollinate kennethreitz/autoenv
+pollinate hyperupcall/autoenv
 pollinate gmarik/vundle --no-source
