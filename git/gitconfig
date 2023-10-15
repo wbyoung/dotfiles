@@ -31,3 +31,5 @@
 	gpgsign = true
 [safe]
 	directory = /usr/local/Homebrew
+[user]
+	email = wbyoung@users.noreply.github.com
