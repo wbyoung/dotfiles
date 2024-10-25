@@ -10,6 +10,18 @@ If sharing a machine, some commands may not work. For instance, Homebrew may
 need to have [group permissions][homebrew-permissions] added/changed to various
 directories.
 
+### Extra Setup
+
+To use the clipboard features over SSH, add the following to whichever host in
+`.ssh/config`:
+
+```
+Host whateverhostname
+  RemoteForward 2224 127.0.0.1:2224
+  PermitLocalCommand yes
+  LocalCommand zsh -c 'clip-server &> /dev/null &'
+```
+
 # Thanks
 
 Inspiration taken from:
