@@ -2,7 +2,7 @@
 
 if [ ! -d "$HOME/.dotfiles" ]; then
     echo "\033[00;36mcloning dotfiles\033[0m"
-    git clone -q https://github.com/wbyoung/dotfiles.git "$HOME/.dotfiles"
+    git clone -q git@github.com:wbyoung/dotfiles.git "$HOME/.dotfiles"
 fi
 
 "$HOME/.dotfiles/bin/dot" "$@"
