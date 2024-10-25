@@ -17,6 +17,7 @@ def install_all
   install_files('vim', Dir.glob('vim/vimrc')) if want_to_install?('vim config')
   if want_to_install?('git config')
     install_files('git', Dir.glob('git/*'))
+    run %{bash -c "#{ENV["HOME"]}/.dotfiles/bin/setup-git-sshcmd"} if $OPTIONS[:git_sshcmd]
     run %{bash -c "#{ENV["HOME"]}/.dotfiles/bin/setup-git-gpgssh"} if $OPTIONS[:git_gpgssh]
   end
   install_files('docker', Dir.glob('docker/*')) if want_to_install?('docker config')
@@ -138,6 +139,9 @@ if __FILE__ == $0
     end
     opts.on("--[no-]git-config") do |flag|
       $OPTIONS[:git_config] = flag
+    end
+    opts.on("--[no-]git-config-sshcmd") do |flag|
+      $OPTIONS[:git_sshcmd] = flag
     end
     opts.on("--[no-]git-config-gpgssh") do |flag|
       $OPTIONS[:git_gpgssh] = flag

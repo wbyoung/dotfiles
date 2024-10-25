@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+cd "$(dirname "$0")/.."
+
+ALT_HOME="${ALT_HOME-$HOME}"
+
+cat > "${HOME}/.gitconfig_sshcmd" <<EOF
+[core]
+	sshCommand = ssh -i ${ALT_HOME}/.ssh/id_ed25519
+EOF
