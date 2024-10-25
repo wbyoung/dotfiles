@@ -12,7 +12,7 @@ $OPTIONS = {}
 def install_all
   selfupdate
   install_homebrew if RUBY_PLATFORM.downcase.include?("darwin") and want_to_install?('homebrew')
-  install_linuxbrew if RUBY_PLATFORM.downcase.include?("linux") and want_to_install?('linuxbrew')
+  install_linuxbrew if RUBY_PLATFORM.downcase.include?("linux") and not is_alpine_linux? and want_to_install?('linuxbrew')
   install_files('zsh', Dir.glob('zshrc')) if want_to_install?('zsh config')
   install_files('vim', Dir.glob('vim/vimrc')) if want_to_install?('vim config')
   install_files('git', Dir.glob('git/*')) if want_to_install?('git config')
@@ -98,6 +98,10 @@ end
 
 def error(message)
   puts "#{Tty.red}#{message}#{Tty.reset}"
+end
+
+def is_alpine_linux?()
+  not (File.read('/etc/os-release') =~ /alpine linux/i).nil?
 end
 
 def want_to_install?(section)
