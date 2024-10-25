@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -e
+cd "$(dirname "$0")/.."
+
+ALT_HOME="${ALT_HOME-$HOME}"
+
+cat > "${HOME}/.gitconfig_gpgssh" <<EOF
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	allowedSignersFile = ${ALT_HOME}/.ssh/allowed_signers
+EOF
