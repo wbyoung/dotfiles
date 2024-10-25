@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 ALT_HOME="${ALT_HOME-$HOME}"
 
 cat > "${HOME}/.gitconfig_gpgssh" <<EOF
+[user]
+  signingKey = ${ALT_HOME}/.ssh/id_ed25519.pub
 [gpg]
 	format = ssh
 [gpg "ssh"]
