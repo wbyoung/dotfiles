@@ -105,11 +105,14 @@ def is_alpine_linux?()
 end
 
 def want_to_install?(section)
-  if $OPTIONS[:prompt]
+  option_key = section.gsub(/\s+/, '_').to_sym
+  if $OPTIONS.has_key? option_key
+    $OPTIONS[option_key]
+  elsif $OPTIONS[:prompt]
     print "#{Tty.cyan}install #{section}? #{Tty.magenta}[y/n] #{Tty.reset}"
     STDIN.gets.chomp == 'y'
   else
-    true
+    $OPTIONS[:choose] != true
   end
 end
 
@@ -117,8 +120,39 @@ if __FILE__ == $0
   OptionParser.new do |opts|
     opts.banner = "Usage: install [options]"
 
-    opts.on("-p", "--[no-]prompt") do |flag|
+    opts.on("-p", "--[no-]prompt", "Prompt to install each item") do |flag|
       $OPTIONS[:prompt] = flag
+    end
+    opts.on("-c", "--choose", "Require opting to install each item") do |flag|
+      $OPTIONS[:choose] = true
+    end
+
+    opts.on("--[no-]zsh-config") do |flag|
+      $OPTIONS[:zsh_config] = flag
+    end
+    opts.on("--[no-]vim-config") do |flag|
+      $OPTIONS[:vim_config] = flag
+    end
+    opts.on("--[no-]git-config") do |flag|
+      $OPTIONS[:git_config] = flag
+    end
+    opts.on("--[no-]tmux-config") do |flag|
+      $OPTIONS[:tmux_config] = flag
+    end
+    opts.on("--[no-]homebrew") do |flag|
+      $OPTIONS[:homebrew] = flag
+    end
+    opts.on("--[no-]linuxbrew") do |flag|
+      $OPTIONS[:linuxbrew] = flag
+    end
+    opts.on("--[no-]docker-config") do |flag|
+      $OPTIONS[:docker_config] = flag
+    end
+    opts.on("--[no-]miscellaneous-config") do |flag|
+      $OPTIONS[:miscellaneous_config] = flag
+    end
+    opts.on("--[no-]osx-defaults") do |flag|
+      $OPTIONS[:osx_defaults] = flag
     end
   end.parse!
 
