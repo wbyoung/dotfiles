@@ -19,7 +19,7 @@ To use the clipboard features over SSH, add the following to whichever host in
 Host whateverhostname
   RemoteForward 2224 127.0.0.1:2224
   PermitLocalCommand yes
-  LocalCommand zsh -c 'clip-server &> /dev/null &'
+  LocalCommand bash -c 'clip-server &> /dev/null &'
 ```
 
 # Thanks

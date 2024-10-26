@@ -11,6 +11,11 @@ Host myhost
 
 EOF
 
+if lsof -i tcp:2224 > /dev/null; then
+  echo "Something else is listening on localhost:2224; cannot proceed"
+  exit 1
+fi
+
 echo "Running clip server..."
 
 while [ true ]; do
