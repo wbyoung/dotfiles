@@ -12,14 +12,12 @@ directories.
 
 ### Extra Setup
 
-To use the clipboard features over SSH, add the following to whichever host in
-`.ssh/config`:
+To use the clipboard features over SSH from macOS, add the following to
+whichever host in `.ssh/config`:
 
 ```
 Host whateverhostname
   RemoteForward 2224 127.0.0.1:2224
-  PermitLocalCommand yes
-  LocalCommand bash -c 'clip-server &> /dev/null &'
 ```
 
 # Thanks

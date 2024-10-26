@@ -1,25 +1,85 @@
 #/usr/bin/env bash
 
-cat <<EOF
+cd "$(dirname "$0")/.."
+
+if ! [[ "$OSTYPE" == darwin* ]]; then
+  echo "Refusing to run on this platform." 1>&2
+  exit 1
+fi
+
+run() {
+  echo "Running clip server..."
+
+  # store pid
+  pid=$(exec sh -c 'echo "$PPID"')
+  echo $pid > clip-server.pid
+
+  while [ true ]; do
+    content=$(nc -l 2224)
+    terminal-notifier -message "$content" -title 'Remote Copy' -sender com.apple.TextEdit -group localhost.terminal.remote-pbcopy
+    pbcopy <<< "$content"
+  done
+}
+
+
+start() {
+  if lsof -i tcp:2224 > /dev/null; then
+    echo "Something else is listening on localhost:2224; cannot proceed" 1>&2
+    exit 1
+  fi
+
+  if [[ -f clip-server.pid ]]; then
+    echo "Already running; cannot proceed" 1>&2
+    exit 1
+  fi
+
+  (run &)
+
+  # wait for port to come up before exiting
+  for run in {1..10}; do
+    if lsof -i tcp:2224 > /dev/null; then
+      break
+    fi
+  done
+}
+
+stop() {
+  if [[ -f clip-server.pid ]]; then
+    pid=$(cat clip-server.pid)
+    pgid=$(ps -o pgid= $pid)
+    kill -TERM -- "-$pgid"
+    rm clip-server.pid
+  else
+    echo "Not running; nothing to do" 1>&2
+    exit 1
+  fi
+}
+
+help() {
+  echo "Best used with an alias for ssh to start & stop the server."
+  echo ""
+  cat <<EOF
 Add the following to ~/.ssh/config:
 
 Host myhost
   HostName fqdn-or-ip
   User user
   RemoteForward 2224 127.0.0.1:2224
-
-
 EOF
+}
 
-if lsof -i tcp:2224 > /dev/null; then
-  echo "Something else is listening on localhost:2224; cannot proceed"
-  exit 1
-fi
-
-echo "Running clip server..."
-
-while [ true ]; do
-  content=$(nc -l 2224)
-  terminal-notifier -message "$content" -title 'Remote Copy' -sender com.apple.TextEdit -group localhost.terminal.remote-pbcopy
-  pbcopy <<< "$content"
-done
+case $1 in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  help)
+    help
+    ;;
+  ?)
+    echo "Invalid command $1"
+    exit 1
+    ;;
+esac
