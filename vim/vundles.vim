@@ -55,7 +55,6 @@ Bundle "ctrlpvim/ctrlp.vim"
 " Vim-improvements
 Bundle "AndrewRadev/splitjoin.vim"
 Bundle "Raimondi/delimitMate"
-Bundle "Shougo/neocomplete.git"
 Bundle "kristijanhusak/vim-multiple-cursors"
 Bundle "bogado/file-line.git"
 Bundle "mattn/webapi-vim.git"
