@@ -38,7 +38,7 @@ def install_homebrew
   run %{bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"} unless $?.success?
   run %{brew update}
   run %{brew install -q cloc coreutils git gpg grc hub jq node python python3 tmux terminal-notifier the_silver_searcher zsh reattach-to-user-namespace vim}
-  run %{brew install -q --cask --appdir=/Applications flux iterm2 google-chrome visual-studio-code}
+  run %{brew install -q --cask --appdir=/Applications flux google-chrome visual-studio-code}
 end
 
 def install_linuxbrew
