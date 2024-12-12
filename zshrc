@@ -1,7 +1,3 @@
-if [[ -a ~/.zshrc.local ]]; then
-  source ~/.zshrc.local
-fi
-
 DOTFILES="${${(%):-%x}:A:h}"
 local_loaded=()
 
@@ -23,3 +19,7 @@ done
 unset -f source-local
 unset local_loaded
 unset DOTFILES
+
+if [[ -a ~/.zshrc.local ]]; then
+  source ~/.zshrc.local
+fi
