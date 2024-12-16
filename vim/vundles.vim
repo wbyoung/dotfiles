@@ -67,6 +67,7 @@ Bundle "vim-scripts/sudo.vim"
 Bundle "goldfeld/ctrlr.vim"
 Bundle "terryma/vim-expand-region"
 Bundle "scrooloose/nerdcommenter"
+Bundle "tpope/vim-tbone"
 
 " Required by rking/ag.vim
 Bundle "MarcWeber/vim-addon-mw-utils.git"
