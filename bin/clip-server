@@ -13,7 +13,7 @@ if [[ "$OSTYPE" == darwin* ]]; then
   }
 elif [[ "$ID" == "fedora" ]]; then
   _notify() {
-    notify-send "Remote Copy" "$1" --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg --app-name "clip-server"
+    notify-send "Remote Copy" "$1" --transient --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg --app-name "clip-server"
   }
   _copy() {
     wl-copy <<< "$1"
