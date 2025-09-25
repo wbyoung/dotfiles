@@ -2,7 +2,25 @@
 
 cd "$(dirname "$0")/.."
 
-if ! [[ "$OSTYPE" == darwin* ]]; then
+[[ -f /etc/os-release ]] && source /etc/os-release
+
+if [[ "$OSTYPE" == darwin* ]]; then
+  _notify() {
+    terminal-notifier -message "$1" -title 'Remote Copy' -sender com.apple.TextEdit -group localhost.terminal.remote-pbcopy
+  }
+  _copy() {
+    pbcopy <<< "$1"
+  }
+elif [[ "$ID" == "fedora" ]]; then
+  _notify() {
+    notify-send "Remote Copy" "$1" --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg --app-name "clip-server"
+  }
+  _copy() {
+    wl-copy -p <<< "$1"
+  }
+fi
+
+if [[ $(type -t _copy) != function ]]; then
   echo "Refusing to run on this platform." 1>&2
   exit 1
 fi
@@ -16,8 +34,8 @@ run() {
 
   while [ true ]; do
     content=$(nc -l 2224)
-    terminal-notifier -message "$content" -title 'Remote Copy' -sender com.apple.TextEdit -group localhost.terminal.remote-pbcopy
-    pbcopy <<< "$content"
+    _notify "$content"
+    _copy "$content"
   done
 }
 
@@ -47,6 +65,8 @@ stop() {
   if [[ -f clip-server.pid ]]; then
     pid=$(cat clip-server.pid)
     pgid=$(ps -o pgid= $pid)
+    pgid="${pgid##*[[:space:]]}"
+    pgid="${pgid%%*[[:space:]]}"
     kill -TERM -- "-$pgid"
     rm clip-server.pid
   else
@@ -82,4 +102,6 @@ case $1 in
     echo "Invalid command $1"
     exit 1
     ;;
+  *)
+    echo "usage: clip-server [start|stop|help]"
 esac
