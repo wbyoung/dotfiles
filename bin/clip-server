@@ -16,6 +16,7 @@ elif [[ "$ID" == "fedora" ]]; then
     notify-send "Remote Copy" "$1" --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg --app-name "clip-server"
   }
   _copy() {
+    wl-copy <<< "$1"
     wl-copy -p <<< "$1"
   }
 fi
