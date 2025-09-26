@@ -6,14 +6,25 @@ cd "$(dirname "$0")/.."
 
 if [[ "$OSTYPE" == darwin* ]]; then
   _notify() {
-    terminal-notifier -message "$1" -title 'Remote Copy' -sender com.apple.TextEdit -group localhost.terminal.remote-pbcopy
+    terminal-notifier \
+      -message "$1" \
+      -title 'Remote Copy' \
+      -sender com.apple.TextEdit \
+      -group localhost.terminal.remote-pbcopy
   }
   _copy() {
     pbcopy <<< "$1"
   }
 elif [[ "$ID" == "fedora" ]]; then
   _notify() {
-    notify-send "Remote Copy" "$1" --transient --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg --app-name "clip-server"
+    last_notify_id=$(
+      notify-send "Remote Copy" "$1" \
+        --transient \
+        --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg \
+        --app-name "clip-server" \
+        --replace-id "${last_notify_id:-0}" \
+        --print-id
+    )
   }
   _copy() {
     wl-copy <<< "$1"
