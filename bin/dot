@@ -1,150 +1,249 @@
-#!/usr/bin/env ruby
+#!/usr/bin/env bash
 
-require 'optparse'
-require 'fileutils'
-require 'pathname'
+cd "$(dirname "$0")/.."
+shopt -s extglob
 
-$OPTIONS = {}
+declare -A OPTIONS
 
-# TODO: is `xcode-select --install` required on a fresh machine?
-# TODO: is `sudo apt-get install build-essential` required on a fresh machine?
+if [ -t 1 ] && (
+  (
+  [ -x "$(command -v tput)" ] \
+    && [ -n "$(tput colors)" ] \
+    && [ "$(tput colors)" -ge 8 ] \
+  ) \
+  || [[ "$TERM" == *color* ]] \
+  || [[ -n "$COLORTERM" ]] \
+); then
+    export CLICOLOR=true
+fi
 
-def install_all
-  selfupdate
-  install_homebrew if RUBY_PLATFORM.downcase.include?("darwin") and want_to_install?('homebrew')
-  install_files('zsh', Dir.glob('zshrc')) if want_to_install?('zsh config')
-  install_files('vim', Dir.glob('vim/vimrc')) if want_to_install?('vim config')
-  if want_to_install?('git config')
-    install_files('git', Dir.glob('git/*'))
-    run %{bash -c "#{ENV["HOME"]}/.dotfiles/bin/setup-git-sshcmd"} if $OPTIONS[:git_sshcmd]
-    run %{bash -c "#{ENV["HOME"]}/.dotfiles/bin/setup-git-gpgssh"} if $OPTIONS[:git_gpgssh]
-  end
-  install_files('tmux', Dir.glob('tmux/*')) if want_to_install?('tmux config')
-  install_files('misc', Dir.glob('misc/*')) if want_to_install?('miscellaneous config')
-  run %{osx/setup} if RUBY_PLATFORM.downcase.include?("darwin") and want_to_install?('osx defaults')
-end
+if [ "${CLICOLOR}" = "true" ] || [ "${CLICOLOR}" = "1" ]; then
+    YELLOW="\033[0;33m"
+    BLUE="\033[0;34m"
+    MAGENTA="\033[0;35m"
+    CYAN="\033[0;36m"
+    RED="\033[0;31m"
+    BOLD="\033[1m"
+    RESET="\033[0m"
+fi
 
-def selfupdate
-  info "[selfupdate]"
+dot-main() {
+  parse-options "$@"
+  install-all
+}
 
-  run %{git pull origin -q --ff-only}
-end
+install-all() {
+  self-update
+  is-darwin && want-to-install "homebrew" && install-homebrew
+  want-to-install "zsh config" && install-files "zsh" "zshrc"
+  want-to-install "vim config" && install-files "vim" "vim/vimrc"
+  if want-to-install "git config"; then
+    install-files "git" "git/*"
+    is-option-set "git-sshcmd" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-sshcmd"
+    is-option-set "git-gpgssh" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-gpgssh"
+  fi
+  want-to-install "tmux config" && install-files "tmux" "tmux/*"
+  want-to-install "miscellaneous config" && install-files "misc" "misc/*"
+  is-darwin && want-to-install "osx defaults" && run-cmd "osx/setup"
+}
 
-def install_homebrew
-  info "[homebrew]"
+self-update() {
+  log-info "[self-update]"
+  run-cmd "git pull origin -q --ff-only"
+}
 
-  run %{which brew}
-  run %{bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"} unless $?.success?
-  run %{brew update}
-  run %{brew install -q cloc coreutils git gpg grc hub jq node python python3 tmux terminal-notifier the_silver_searcher zsh reattach-to-user-namespace vim}
-  run %{brew install -q --cask --appdir=/Applications flux google-chrome visual-studio-code}
-  run %{brew install -q --no-quarantine grishka/grishka/neardrop}
-end
+install-homebrew() {
+  log-info "[homebrew]"
 
-def install_files(title, files)
-  info "[#{title}]"
+  run-cmd which brew
+  [[ $? -eq 0 ]] || run-cmd install-homebrew[via curl]
+  run-cmd brew update
+  run-cmd brew install -q cloc coreutils git gpg grc hub jq node python python3 tmux terminal-notifier the_silver_searcher zsh reattach-to-user-namespace vim
+  run-cmd brew install -q --cask --appdir=/Applications flux google-chrome visual-studio-code
+  run-cmd brew install -q --no-quarantine grishka/grishka/neardrop
+}
 
-  files.each do |f|
-    file = f.split('/').last
-    source = Pathname.new("#{Dir.getwd}/#{f}").relative_path_from(Pathname.new(ENV["HOME"])).to_s
-    target = "#{ENV["HOME"]}/.#{file}"
+install-files() {
+  log-info "[$1]"
+  shift
 
-    if File.exist?(target) && (!File.symlink?(target) || (File.symlink?(target) && File.readlink(target) != source))
-      error "overwriting #{target}, leaving original at #{target}.backup"
-      run %{mv "$HOME/.#{file}" "$HOME/.#{file}.backup"}
-    end
+  for file in $@; do
+    name=$(basename $file)
+    basepath=$([[ "$(dirname "$PWD")" == "$HOME" ]] \
+        && basename "$PWD" \
+        || echo "$PWD")
+    source="$basepath/$file"
+    target="$HOME/.$name"
+    overwrite_reason=""
 
-    run %{ln -nfs "#{source}" "#{target}"}
-  end
-end
+    if [[ -L "$target" ]]; then
+      if [[ "$(readlink "$target")" != "$source" ]]; then
+        overwrite_reason="wrong symlink"
+      fi
+    elif [[ -e "$target" ]]; then
+      overwrite_reason="not a symlink"
+    fi
 
-private
+    if [[ -n "$overwrite_reason" ]]; then
+      log-error "overwriting ${target} (${overwrite_reason}), leaving original at ${target}.backup"
+      run-cmd mv "$HOME/.$name" "$HOME/.$name.backup"
+    fi
 
-module Tty extend self
-  def red; regular 31; end
-  def cyan; regular 36; end
-  def magenta; bold 35; end
-  def reset; escape 0; end
-  def regular n; escape "0;#{n}" end
-  def bold n; escape "1;#{n}" end
-  def escape n; "\033[#{n}m" if STDOUT.tty? end
-end
+    run-cmd ln -nfs "${source}" "${target}"
+  done
+}
 
-def run(cmd)
-  detail "[exec] #{cmd}"
-  `#{cmd}` unless ENV['DEBUG']
-end
+install-homebrew() {
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+}
 
-def info(message)
-  puts "#{Tty.cyan}#{message}#{Tty.reset}"
-end
+run-cmd() {
+  log-detail "[exec] ${*}"
 
-def detail(message)
-  puts "#{Tty.magenta}#{message}#{Tty.reset}"
-end
+  if [[ "${OPTIONS["dry-run"]}" != "yes" ]]; then
+    $@
+  fi
+}
 
-def error(message)
-  puts "#{Tty.red}#{message}#{Tty.reset}"
-end
+log-info() {
+  printf "${CYAN}${*}${RESET}\n"
+}
 
-def is_alpine_linux?()
-  not (File.read('/etc/os-release') =~ /alpine linux/i).nil?
-end
+log-detail() {
+  printf "${MAGENTA}${*}${RESET}\n"
+}
 
-def want_to_install?(section)
-  option_key = section.gsub(/\s+/, '_').to_sym
-  if $OPTIONS.has_key? option_key
-    $OPTIONS[option_key]
-  elsif $OPTIONS[:prompt]
-    print "#{Tty.cyan}install #{section}? #{Tty.magenta}[y/n] #{Tty.reset}"
-    STDIN.gets.chomp == 'y'
+log-error () {
+  printf "${RED}${*}${RESET}\n" 1>&2
+}
+
+is-darwin() {
+  [[ "$OSTYPE" == darwin* ]] && return 0 || return 1
+}
+
+is-alpine-linux() {
+  [[ -f /etc/os-release ]] \
+    && [[ "$(source /etc/os-release && echo $ID)" == "alpine" ]] \
+    && return 0 || return 1
+}
+
+is-fedora-linux() {
+  [[ -f /etc/os-release ]] \
+    && [[ "$(source /etc/os-release && echo $ID)" == "fedora" ]] \
+    && return 0 || return 1
+}
+
+is-option-set() {
+  [[ "${OPTIONS[${1}]}" == "yes" ]] \
+    && return 0 || return 1
+}
+
+want-to-install() {
+  section="${1}"
+  option_key="${section// /-}"
+  option_value="${OPTIONS[${option_key}]}"
+
+  if [[ -n "$option_value" ]]; then
+    is-option-set "$option_key"
+    return $?
+  elif is-option-set "prompt"; then
+    printf "${CYAN}install ${section1}? ${MAGENTA}[y/n] ${RESET}\n"
+    read response
+    [[ "${response// /}" == "y" ]] \
+      && return 0 || return 1
+  elif is-option-set "choose"; then
+    return 1 # for `--choose` the default is that nothing is installed
   else
-    $OPTIONS[:choose] != true
-  end
-end
+    return 0 # the default is that everything is installed
+  fi
+}
 
-if __FILE__ == $0
-  OptionParser.new do |opts|
-    opts.banner = "Usage: install [options]"
+parse-flag() {
+  [[ "${1}" == "--no"* ]] && echo "no" || echo "yes"
+}
 
-    opts.on("-p", "--[no-]prompt", "Prompt to install each item") do |flag|
-      $OPTIONS[:prompt] = flag
-    end
-    opts.on("-c", "--choose", "Require opting to install each item") do |flag|
-      $OPTIONS[:choose] = true
-    end
+parse-options() {
+  while [ $# -ne 0 ]; do
+    case "${1}" in
+      -p|--?(no)prompt)
+        OPTIONS["prompt"]=$(parse-flag "${1}")
+        shift
+        ;;
+      -c|--choose)
+        OPTIONS["choose"]="yes"
+        shift
+        ;;
+      -d|--dry-run)
+        OPTIONS["dry-run"]="yes"
+        shift
+        ;;
+      --?(no)zsh-config)
+        OPTIONS["zsh-config"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)vim-config)
+        OPTIONS["vim-config"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)git-config)
+        OPTIONS["git-config"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)git-config-sshcmd)
+        OPTIONS["git-config-sshcmd"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)git-config-gpgssh)
+        OPTIONS["git-config-gpgssh"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)tmux-config)
+        OPTIONS["tmux-config"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)homebrew)
+        OPTIONS["homebrew"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)miscellaneous-config)
+        OPTIONS["miscellaneous-config"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)osx-defaults)
+        OPTIONS["osx-defaults"]=$(parse-flag "${1}")
+        shift
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        log-error "invalid argument: ${1}"
+        usage
+        exit 1
+        ;;
+    esac
+  done
+}
 
-    opts.on("--[no-]zsh-config") do |flag|
-      $OPTIONS[:zsh_config] = flag
-    end
-    opts.on("--[no-]vim-config") do |flag|
-      $OPTIONS[:vim_config] = flag
-    end
-    opts.on("--[no-]git-config") do |flag|
-      $OPTIONS[:git_config] = flag
-    end
-    opts.on("--[no-]git-config-sshcmd") do |flag|
-      $OPTIONS[:git_sshcmd] = flag
-    end
-    opts.on("--[no-]git-config-gpgssh") do |flag|
-      $OPTIONS[:git_gpgssh] = flag
-    end
-    opts.on("--[no-]tmux-config") do |flag|
-      $OPTIONS[:tmux_config] = flag
-    end
-    opts.on("--[no-]homebrew") do |flag|
-      $OPTIONS[:homebrew] = flag
-    end
-    opts.on("--[no-]miscellaneous-config") do |flag|
-      $OPTIONS[:miscellaneous_config] = flag
-    end
-    opts.on("--[no-]osx-defaults") do |flag|
-      $OPTIONS[:osx_defaults] = flag
-    end
-  end.parse!
+usage() {
+  echo "Usage:"
+  echo "	dot [options]"
+  echo
+  echo "Options:"
+  echo "	-p, --[no-]prompt	Prompt to install each item"
+  echo "	-c, --choose	Require opting to install each item"
+  echo "	-d, --dry-run	Do not actually run commands"
+  echo "	--[no-]git-config-gpgssh"
+  echo "	--[no-]git-config-sshcmd"
+  echo "	--[no-]git-config"
+  echo "	--[no-]homebrew"
+  echo "	--[no-]miscellaneous-config"
+  echo "	--[no-]osx-defaults"
+  echo "	--[no-]tmux-config"
+  echo "	--[no-]vim-config"
+  echo "	--[no-]zsh-config"
+  echo "	--help"
+}
 
-  Dir.chdir "#{File.dirname(__FILE__)}/.." do
-    install_all
-  end
-
-end
+dot-main "$@"
