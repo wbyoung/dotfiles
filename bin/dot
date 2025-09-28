@@ -147,10 +147,18 @@ want-to-install() {
     is-option-set "$option_key"
     return $?
   elif is-option-set "prompt"; then
-    printf "${CYAN}install ${section}? ${MAGENTA}[y/n] ${RESET}"
-    read response
-    [[ "${response// /}" == "y" ]] \
-      && return 0 || return 1
+    while [[ true ]]; do
+      printf "${CYAN}install ${section}? ${MAGENTA}[y/n] ${RESET}"
+      read response
+      case "$response" in
+          y)
+              return 0
+              ;;
+          n)
+              return 1
+              ;;
+      esac
+    done
   elif is-option-set "choose"; then
     return 1 # for `--choose` the default is that nothing is installed
   else
