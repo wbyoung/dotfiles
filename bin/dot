@@ -45,6 +45,7 @@ install-all() {
   want-to-install "tmux config" && install-files "tmux" "tmux/*"
   want-to-install "miscellaneous config" && install-files "misc" "misc/*"
   is-darwin && want-to-install "osx defaults" && run-cmd "osx/setup"
+  is-fedora-linux && want-to-install "fedora settings" && run-cmd "fedora/setup"
 }
 
 self-update() {
@@ -221,6 +222,10 @@ parse-options() {
         OPTIONS["osx-defaults"]=$(parse-flag "${1}")
         shift
         ;;
+      --?(no)fedora-settings)
+        OPTIONS["fedora-settings"]=$(parse-flag "${1}")
+        shift
+        ;;
       -h|--help)
         usage
         exit 0
@@ -242,6 +247,7 @@ usage() {
   echo "	-p, --[no-]prompt	Prompt to install each item"
   echo "	-c, --choose	Require opting to install each item"
   echo "	-d, --dry-run	Do not actually run commands"
+  echo "	--[no-]fedora-settings"
   echo "	--[no-]git-config-gpgssh"
   echo "	--[no-]git-config-sshcmd"
   echo "	--[no-]git-config"

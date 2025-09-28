@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+
+if [ -t 1 ] && [ -n "$(tput colors)" ] && [ "$(tput colors)" -ge 8 ]; then
+    export CLICOLOR=true
+fi
+
+if [ "${CLICOLOR}" = "true" ] || [ "${CLICOLOR}" = "1" ]; then
+    YELLOW="\033[0;33m"
+    BLUE="\033[0;34m"
+    MAGENTA="\033[0;35m"
+    CYAN="\033[0;36m"
+    RED="\033[0;31m"
+    BOLD="\033[1m"
+    RESET="\033[0m"
+fi
+
+write-settings() {
+  # map capslock to escape while retaining 'lv3:ralt_switch' default setting
+  gsettings set org.gnome.desktop.input-sources xkb-options "['lv3:ralt_switch', 'caps:escape_shifted_capslock']"
+
+  terminal_profile_id=$(dconf read /org/gnome/Ptyxis/default-profile-uuid)
+  terminal_profile_id=${terminal_profile_id#\'}
+  terminal_profile_id=${terminal_profile_id%\'}
+
+  dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/bold-is-bright "false"
+  dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/palette "'solarized'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-1 "'<Alt>exclam'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-10 "'<Alt>parenright'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-2 "'<Alt>at'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-3 "'<Alt>numbersign'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-4 "'<Alt>dollar'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-5 "'<Alt>percent'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-6 "'<Alt>asciicircum'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-7 "'<Alt>ampersand'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-8 "'<Alt>asterisk'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-9 "'<Alt>parenleft'"
+  dconf write /org/gnome/Ptyxis/Shortcuts/reset "''"
+  dconf write /org/gnome/Ptyxis/Shortcuts/reset-and-clear "'<Shift><Control>k'"
+}
+
+install-packages() {
+  if [[ "$(dconf read /localhost/wbyoung/dot/packages 2>/dev/null)" = "true" ]] && \
+    [[ "$FEDORA_PACKAGES" != "1" ]]; then
+    printf "${RED}${BOLD}Packages have already been installed.${RESET} " 1>&2
+    printf "${YELLOW}Re-run with FEDORA_PACKAGES=1${RESET}\n" 1>&2
+    return 1
+  else
+    dconf write /localhost/wbyoung/dot/packages "true"
+  fi
+
+  # ask for the administrator password upfront
+  sudo -v
+
+  # development tools
+  sudo dnf install @development-tools gcc-c++ python3-devel
+
+  # vscode
+  sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+  echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null
+  dnf check-update
+  sudo dnf install code # or code-insiders
+
+  # brave browser
+  sudo dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+  sudo dnf install brave-browser
+
+  # gh command line tool
+  sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
+  sudo dnf install gh --repo gh-cli
+}
+
+install-packages
+write-settings
