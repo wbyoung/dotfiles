@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#
-# remount NAS that's timing out
-
-sudo umount /Network/NAS/* &> /dev/null
-ls /Network/NAS/* &> /dev/null && echo ready
