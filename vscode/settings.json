@@ -1,0 +1,11 @@
+{
+    "editor.rulers": [
+        80, 120
+    ],
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "window.restoreWindows": "none",
+    "window.openFoldersInNewWindow": "on",
+    "window.openFilesInNewWindow": "on",
+    "diffEditor.renderSideBySide": false,
+    "workbench.startupEditor": "newUntitledFile"
+}

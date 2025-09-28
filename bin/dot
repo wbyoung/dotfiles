@@ -35,15 +35,16 @@ dot-main() {
 install-all() {
   self-update
   is-darwin && want-to-install "homebrew" && install-homebrew
-  want-to-install "zsh config" && install-files "zsh" "zshrc"
-  want-to-install "vim config" && install-files "vim" "vim/vimrc"
+  want-to-install "zsh config" && install-files "zsh" "." "zshrc"
+  want-to-install "vim config" && install-files "vim" "." "vim/vimrc"
   if want-to-install "git config"; then
-    install-files "git" "git/*"
+    install-files "git" "." "git/*"
     is-option-set "git-sshcmd" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-sshcmd"
     is-option-set "git-gpgssh" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-gpgssh"
   fi
-  want-to-install "tmux config" && install-files "tmux" "tmux/*"
-  want-to-install "miscellaneous config" && install-files "misc" "misc/*"
+  want-to-install "vscode config" && install-files "vscode" ".config/Code/User/" "vscode/*"
+  want-to-install "tmux config" && install-files "tmux" "." "tmux/*"
+  want-to-install "miscellaneous config" && install-files "misc" "." "misc/*"
   is-darwin && want-to-install "osx defaults" && run-cmd "osx/setup"
   is-fedora-linux && want-to-install "fedora settings" && run-cmd "fedora/setup"
 }
@@ -66,15 +67,23 @@ install-homebrew() {
 
 install-files() {
   log-info "[$1]"
-  shift
+  target_prefix="${2}"
+  target_prefix_nodirs="${target_prefix//\//}"
+  target_prefix_dir_count=$((${#target_prefix} - ${#target_prefix_nodirs}))
+  relative_to_home=""
+  for (( i=0; i<$target_prefix_dir_count; i++ )); do
+    relative_to_home+="../"
+  done
+
+  shift 2
 
   for file in $@; do
     name=$(basename $file)
     basepath=$([[ "$(dirname "$PWD")" == "$HOME" ]] \
-        && basename "$PWD" \
+        && (echo "$relative_to_home$(basename "$PWD")") \
         || echo "$PWD")
     source="$basepath/$file"
-    target="$HOME/.$name"
+    target="$HOME/$target_prefix$name"
     overwrite_reason=""
 
     if [[ -L "$target" ]]; then
@@ -87,7 +96,7 @@ install-files() {
 
     if [[ -n "$overwrite_reason" ]]; then
       log-error "overwriting ${target} (${overwrite_reason}), leaving original at ${target}.backup"
-      run-cmd mv "$HOME/.$name" "$HOME/.$name.backup"
+      run-cmd mv "$target" "$target.backup"
     fi
 
     run-cmd ln -nfs "${source}" "${target}"
@@ -206,6 +215,10 @@ parse-options() {
         OPTIONS["git-config-gpgssh"]=$(parse-flag "${1}")
         shift
         ;;
+      --?(no)vscode-config)
+        OPTIONS["vscode-config"]=$(parse-flag "${1}")
+        shift
+        ;;
       --?(no)tmux-config)
         OPTIONS["tmux-config"]=$(parse-flag "${1}")
         shift
@@ -256,6 +269,7 @@ usage() {
   echo "	--[no-]osx-defaults"
   echo "	--[no-]tmux-config"
   echo "	--[no-]vim-config"
+  echo "	--[no-]vscode-config"
   echo "	--[no-]zsh-config"
   echo "	--help"
 }
