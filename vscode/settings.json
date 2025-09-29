@@ -1,4 +1,6 @@
 {
+    "chat.disableAIFeatures": true,
+    "diffEditor.renderSideBySide": false,
     "editor.rulers": [
         80, 120
     ],
@@ -6,6 +8,8 @@
     "window.restoreWindows": "none",
     "window.openFoldersInNewWindow": "on",
     "window.openFilesInNewWindow": "on",
-    "diffEditor.renderSideBySide": false,
-    "workbench.startupEditor": "newUntitledFile"
+    "workbench.startupEditor": "newUntitledFile",
+    "[plaintext]": {
+        "editor.colorDecorators": false
+    }
 }
