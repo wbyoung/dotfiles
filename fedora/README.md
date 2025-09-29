@@ -16,7 +16,6 @@ As of Fedora 42, I experienced a few issues with some tools that needed more per
 - Accessing the local filesystem was limited which affected the ability to open a HTML file in _Brave_ that would be able to access linked resources via relative paths.
 - If `flatpak-spawn` is used for spawning shells inside of other tools (i.e. _Visual Studio Code_), it doesn't seem to allow `^C` to make it through to the running process, so it's not possible to run long running processes like watched tests, servers, etc. inside of such an application.
 
-
 ## Visual Studio Code
 
 Visual Studio Code doesn't work well via Flatpak for two reasons (see the discussion in the main [Flatpak section](#flatpak)):
@@ -59,3 +58,7 @@ If it ever works better, the config I used with Flatpak until the issues were to
     }
 }
 ```
+
+### Known Issues
+
+According to a quick Google search, Visual Studio Code does not yet support kinetic/inertial scrolling.
