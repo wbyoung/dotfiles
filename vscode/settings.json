@@ -1,6 +1,7 @@
 {
     "chat.disableAIFeatures": true,
     "diffEditor.renderSideBySide": false,
+    "editor.inertialScroll": true,
     "editor.rulers": [
         80, 120
     ],

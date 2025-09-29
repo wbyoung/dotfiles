@@ -58,7 +58,3 @@ If it ever works better, the config I used with Flatpak until the issues were to
     }
 }
 ```
-
-### Known Issues
-
-According to a quick Google search, Visual Studio Code does not yet support kinetic/inertial scrolling.
