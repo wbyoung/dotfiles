@@ -208,11 +208,11 @@ parse-options() {
         shift
         ;;
       --?(no)git-config-sshcmd)
-        OPTIONS["git-config-sshcmd"]=$(parse-flag "${1}")
+        OPTIONS["git-sshcmd"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)git-config-gpgssh)
-        OPTIONS["git-config-gpgssh"]=$(parse-flag "${1}")
+        OPTIONS["git-gpgssh"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)vscode-config)
