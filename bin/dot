@@ -275,3 +275,4 @@ usage() {
 }
 
 dot-main "$@"
+exit 0
