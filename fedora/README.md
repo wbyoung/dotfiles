@@ -58,3 +58,7 @@ If it ever works better, the config I used with Flatpak until the issues were to
     }
 }
 ```
+
+## Other Changes
+
+I have enabled [Night Theme Switcher](https://gitlab.com/rmnvgr/nightthemeswitcher-gnome-shell-extension) and while it's possible to script the install have skipped that for now.
