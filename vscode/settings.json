@@ -10,6 +10,9 @@
     "window.openFoldersInNewWindow": "on",
     "window.openFilesInNewWindow": "on",
     "workbench.startupEditor": "newUntitledFile",
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
     "[plaintext]": {
         "editor.colorDecorators": false
     }
