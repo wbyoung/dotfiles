@@ -18,6 +18,7 @@ fi
 write-settings() {
   # map capslock to escape while retaining 'lv3:ralt_switch' default setting
   gsettings set org.gnome.desktop.input-sources xkb-options "['lv3:rwin_switch', 'caps:escape_shifted_capslock', 'compose:ralt']"
+  gsettings set org.gnome.settings-daemon.plugins.housekeeping donation-reminder-enabled false
 
   terminal_profile_id=$(dconf read /org/gnome/Ptyxis/default-profile-uuid)
   terminal_profile_id=${terminal_profile_id#\'}
