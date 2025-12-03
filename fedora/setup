@@ -58,7 +58,9 @@ install-packages() {
   sudo dnf install \
     @development-tools \
     gcc-c++ \
-    python3-devel
+    python3-devel \
+    python3.13 \
+    python3.13-devel
 
   # vscode
   sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
