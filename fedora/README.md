@@ -62,3 +62,21 @@ If it ever works better, the config I used with Flatpak until the issues were to
 ## Other Changes
 
 I have enabled [Night Theme Switcher](https://gitlab.com/rmnvgr/nightthemeswitcher-gnome-shell-extension) and while it's possible to script the install have skipped that for now.
+
+
+## Android Studio
+
+To get the emulator working, follow the [instructions here](https://stackoverflow.com/a/78085883/98069) which should result in just executing the following:
+
+```bash
+sudo ausearch -c 'RenderThread' --raw | audit2allow -M my-RenderThread
+sudo semodule -X 300 -i my-RenderThread.pp
+rm my-RenderThread.pp
+```
+
+
+To later deactivate:
+
+```bash
+sudo semodule -X 300 -r my-RenderThread
+```
