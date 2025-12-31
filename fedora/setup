@@ -26,7 +26,7 @@ write-settings() {
 
   dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/bold-is-bright "false"
   dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/palette "'solarized'"
-  dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/preserve-directory "'never'"
+  dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/preserve-directory "'safe'"
   dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-1 "'<Alt>exclam'"
   dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-10 "'<Alt>parenright'"
   dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-2 "'<Alt>at'"
