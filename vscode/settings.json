@@ -15,5 +15,8 @@
     },
     "[plaintext]": {
         "editor.colorDecorators": false
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
     }
 }
