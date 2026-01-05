@@ -42,6 +42,7 @@ install-all() {
     is-option-set "git-sshcmd" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-sshcmd"
     is-option-set "git-gpgssh" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-gpgssh"
   fi
+  want-to-install "gist commands" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-gist-commands"
   want-to-install "vscode config" && install-files "vscode" ".config/Code/User/" "vscode/*"
   want-to-install "tmux config" && install-files "tmux" "." "tmux/*"
   want-to-install "miscellaneous config" && install-files "misc" "." "misc/*"
@@ -215,6 +216,10 @@ parse-options() {
         OPTIONS["git-gpgssh"]=$(parse-flag "${1}")
         shift
         ;;
+      --?(no)gist-commands)
+        OPTIONS["gist-commands"]=$(parse-flag "${1}")
+        shift
+        ;;
       --?(no)vscode-config)
         OPTIONS["vscode-config"]=$(parse-flag "${1}")
         shift
@@ -264,6 +269,7 @@ usage() {
   echo "	--[no-]git-config-gpgssh"
   echo "	--[no-]git-config-sshcmd"
   echo "	--[no-]git-config"
+  echo "	--[no-]gist-commands"
   echo "	--[no-]homebrew"
   echo "	--[no-]miscellaneous-config"
   echo "	--[no-]osx-defaults"

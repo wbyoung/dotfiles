@@ -1,0 +1,59 @@
+#!/bin/bash
+
+set -e
+cd "$(dirname "$0")/.."
+
+
+if [ -t 1 ] && (
+  (
+  [ -x "$(command -v tput)" ] \
+    && [ -n "$(tput colors)" ] \
+    && [ "$(tput colors)" -ge 8 ] \
+  ) \
+  || [[ "$TERM" == *color* ]] \
+  || [[ -n "$COLORTERM" ]] \
+); then
+    export CLICOLOR=true
+fi
+
+if [ "${CLICOLOR}" = "true" ] || [ "${CLICOLOR}" = "1" ]; then
+    YELLOW="\033[0;33m"
+    BLUE="\033[0;34m"
+    MAGENTA="\033[0;35m"
+    CYAN="\033[0;36m"
+    RED="\033[0;31m"
+    BOLD="\033[1m"
+    RESET="\033[0m"
+fi
+
+mkdir -p gists/bin
+mkdir -p gists/repos
+cd gists/repos
+
+gh gist list | while IFS= read -r line; do
+    echo "$line" | while IFS=$'\t' read -r id description files visibility updated; do
+        untagged=$(
+            echo "$description" | sed 's/\s*\[dotfiles\s*=\s*true\]//gI'
+        )
+
+        if [[ "$description" != "$untagged" ]]; then
+            if [[ -d "$id" ]]; then
+                printf "${MAGENTA}updating ${YELLOW}${untagged}${RESET}\n"
+                cd "$id"
+                git fetch >/dev/null
+                git reset --hard origin/main >/dev/null
+                cd ..
+            else
+                printf "${CYAN}cloning ${YELLOW}${untagged}${RESET}\n"
+                _=$(gh gist clone "$id" 2>&1) # subcommand captures output
+            fi
+
+            cd "$id"
+            for f in *; do
+                ln -fs "../repos/$id/$f" "../../bin/$f"
+                chmod +x "$f"
+            done
+            cd ..
+        fi
+    done
+done
