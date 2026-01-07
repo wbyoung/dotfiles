@@ -8,6 +8,20 @@ Some issues that needed to be addressed after first installing Fedora 42:
 - Package update was not working in the UI (which could have been network issues), so `dnf` was used to actually update software.
 - I couldn't get VIM local and/or remote copy to work exactly how I wanted via focus events and [ended up with a compromise](https://github.com/wbyoung/dotfiles/commit/69bf7f0da4c1eb59b7cc19936dc6b75a22d02462).
 
+## Fingerprint Sensor
+
+I tried to improve the effectiveness of the fingerprint sensor when it wasn't working well. I found drivers from `antiderivative/libfprint-tod-goodix-0.0.9`, and tried to install them via:
+
+```sh
+sudo dnf copr enable antiderivative/libfprint-tod-goodix-0.0.9
+sudo dnf install libfprint-tod-goodix
+sudo systemctl restart fprintd
+```
+
+The install failed due to conflicts with existing software. This likely wasn't compatible with my specific sensor anyway as I have a newer sensor (`lsusb` shows a different model number suffix). After removing & re-adding fingerprints, things worked better, so it's possible that something in the install process re-configured.
+
+It's also possible that things started working better on Fedora 43, but just needed to be reset.
+
 ## Flatpak
 
 As of Fedora 42, I experienced a few issues with some tools that needed more permissions than were extended via a `flatpak` install.
