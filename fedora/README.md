@@ -63,6 +63,8 @@ If it ever works better, the config I used with Flatpak until the issues were to
 
 I have enabled [Night Theme Switcher](https://gitlab.com/rmnvgr/nightthemeswitcher-gnome-shell-extension) and while it's possible to script the install have skipped that for now.
 
+Docker and Slack both use status bar icons which can be enabled via [AppIndicator and KStatusNotifierItem Support](https://extensions.gnome.org/extension/615/appindicator-support/).
+
 
 ## Android Studio
 
