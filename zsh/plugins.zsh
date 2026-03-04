@@ -5,7 +5,7 @@ source-local "zsh/pollen.zsh"
 
 pollinate tonyseek/oh-my-zsh-virtualenv-prompt#plugins/virtualenv-prompt --no-source
 
-plugins=(git github gulp virtualenv-prompt)
+plugins=(colorize git github gulp vi-mode virtualenv-prompt)
 pollinate robbyrussell/oh-my-zsh
 pollinate hyperupcall/autoenv
 pollinate gmarik/vundle --no-source
