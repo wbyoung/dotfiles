@@ -1,5 +1,6 @@
-.vscode/
+.vscode/*
 .env
 .env.leave
 .DS_Store
+*.code-workspace
 *~
