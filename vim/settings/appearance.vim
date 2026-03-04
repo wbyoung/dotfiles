@@ -8,14 +8,16 @@ endif
 
 colorscheme solarized
 
-" https://matbooth.co.uk/2025/09/16/vim-solarized-follow-system-preference.html
-let sys_colors=system('
-    \ ptyxis=$(dconf read /org/gnome/Ptyxis/interface-style);
-    \ [ "${ptyxis//' . "'" . '/}" = "system" ]
-    \   && gsettings get org.gnome.desktop.interface color-scheme
-    \   || echo "$ptyxis"
-    \')
-if sys_colors =~ 'dark'
+" To simplify setup of vim across local, remote, and tmux based sessions while
+" allowing the color palette of the terminal emulator to be updated on the local
+" machine, it is easiest to make the dark mode a full invert of the light mode.
+" A full invert means that in dark mode, white will render as black and black as
+" white. With this type of style, the background should always be set to light
+" in vim & it will render based on the underlying emulator palette as dark when
+" appropriate. There's a small script to extract the terminal emulator style
+" that can handle determining the platform, `terminal-style`.
+let term_style=system('terminal-style')
+if term_style =~ 'dark' && term_style !~ 'full-invert'
     set background=dark
 else
     set background=light

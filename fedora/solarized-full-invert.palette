@@ -1,5 +1,5 @@
 [Palette]
-Name=Solarized (Corrected)
+Name=Solarized (Full Invert)
 
 [Light]
 # bg=base3/brwhite, fg=base00/bryellow, cursor=base01/brgreen
@@ -45,37 +45,37 @@ Background=#002b36
 Foreground=#839496
 Cursor=#93a1a1
 
-# ANSI black dark/light = base02/black, base03/brblack
-Color0=#073642
-Color8=#002b36
+# ANSI black[invert-both] dark/light = base2/white, base3/brwhite
+Color0=#eee8d5
+Color8=#fdf6e3
 
 # ANSI red dark/light = red, orange/brred
 Color1=#dc322f
 Color9=#cb4b16
 
-# ANSI green dark/light = green, base01/brgreen
+# ANSI green dark/light[invert] = green, base1/brcyan
 Color2=#859900
-Color10=#586e75
+Color10=#93a1a1
 
-# ANSI yellow dark/light = yellow, base00/bryellow
+# ANSI yellow dark/light[invert] = yellow, base0/brblue
 Color3=#b58900
-Color11=#657b83
+Color11=#839496
 
-# ANSI blue dark/light = blue, base0/brblue
+# ANSI blue dark/light[invert] = blue, base00/bryellow
 Color4=#268bd2
-Color12=#839496
+Color12=#657b83
 
 # ANSI magenta dark/light = magenta, violet/brmagenta
 Color5=#d33682
 Color13=#6c71c4
 
-# ANSI cyan dark/light = cyan, base1/brcyan
+# ANSI cyan dark/light[invert] = cyan, base01/brgreen
 Color6=#2aa198
-Color14=#93a1a1
+Color14=#586e75
 
-# ANSI white dark/light = base2/white, base3/brwhite
-Color7=#eee8d5
-Color15=#fdf6e3
+# ANSI white[invert-both] dark/light = base02/black, base03/brblack
+Color7=#073642
+Color15=#002b36
 
 
 # SOLARIZED HEX     16/8 TERMCOL  XTERM/HEX   L*A*B      RGB         HSB

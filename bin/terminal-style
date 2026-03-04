@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+terminal-style-main() {
+  is-fedora-linux \
+    && fedora-terminal-style \
+    || default-terminal-style
+
+}
+
+default-terminal-style() {
+  echo "${TERMINAL_STYLE:-dark}"
+}
+
+fedora-terminal-style() {
+  local term_profile_id=$(read-ptyxis-setting default-profile-uuid)
+  local term_style=$(read-ptyxis-setting interface-style)
+  local term_palette=$(read-ptyxis-setting Profiles/$term_profile_id/palette)
+  local system_style=$(
+    gsettings get org.gnome.desktop.interface color-scheme | trim-single-quotes
+  )
+
+  if [ "$system_style" = "default" ]; then
+    system_style="prefer-light"
+  fi
+
+  if [ "$term_style" = "system" ]; then
+    echo "${system_style#prefer-}[$term_palette]"
+  else
+    echo "$term_style[$term_palette]"
+  fi 
+}
+
+is-fedora-linux() {
+  [[ -f /etc/os-release ]] \
+    && [[ "$(source /etc/os-release && echo $ID)" == "fedora" ]] \
+    && return 0 || return 1
+}
+
+read-ptyxis-setting() {
+  dconf read "/org/gnome/Ptyxis/$1" | trim-single-quotes
+}
+
+trim-single-quotes() {
+  local value=$(cat)
+  value=${value#\'}
+  value=${value%\'}
+  echo "$value"
+}
+
+terminal-style-main

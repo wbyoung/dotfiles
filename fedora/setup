@@ -24,12 +24,14 @@ write-settings() {
   terminal_profile_id=${terminal_profile_id#\'}
   terminal_profile_id=${terminal_profile_id%\'}
 
-  ln -s \
-    "${HOME}/.dotfiles/fedora/solarized-corrected.palette" \
-    "${HOME}/.local/share/org.gnome.Ptyxis/palettes/solarized-corrected.palette"
+  for name in "corrected" "full-invert"; do
+    ln -fs \
+      "${HOME}/.dotfiles/fedora/solarized-${name}.palette" \
+      "${HOME}/.local/share/org.gnome.Ptyxis/palettes/solarized-${name}.palette"
+  done
 
   dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/bold-is-bright "false"
-  dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/palette "'Solarized (True)'"
+  dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/palette "'solarized-full-invert'"
   dconf write /org/gnome/Ptyxis/Profiles/$terminal_profile_id/preserve-directory "'safe'"
   dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-1 "'<Alt>exclam'"
   dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-10 "'<Alt>parenright'"
