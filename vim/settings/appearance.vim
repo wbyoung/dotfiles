@@ -8,7 +8,19 @@ endif
 
 colorscheme solarized
 
-set background=light            " Define background style
+" https://matbooth.co.uk/2025/09/16/vim-solarized-follow-system-preference.html
+let sys_colors=system('
+    \ ptyxis=$(dconf read /org/gnome/Ptyxis/interface-style);
+    \ [ "${ptyxis//' . "'" . '/}" = "system" ]
+    \   && gsettings get org.gnome.desktop.interface color-scheme
+    \   || echo "$ptyxis"
+    \')
+if sys_colors =~ 'dark'
+    set background=dark
+else
+    set background=light
+endif
+
 set number                      " Line numbers are good
 set backspace=indent,eol,start  " Allow backspace in insert mode
 set history=1000                " Store lots of :cmdline history

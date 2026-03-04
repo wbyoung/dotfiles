@@ -2,80 +2,80 @@
 Name=Solarized (True)
 
 [Light]
-# base3/brwhite
+# bg=base3/brwhite, fg=base00/bryellow, cursor=base01/brgreen
 Background=#fdf6e3
-# base00/bryellow
 Foreground=#657b83
-# ANSI Black = base02/black
+Cursor=#586e75
+
+# ANSI black dark/light = base02/black, base03/brblack
 Color0=#073642
-# ANSI Red = red
-Color1=#dc322f
-# ANSI Green = green
-Color2=#859900
-# ANSI Yellow = yellow
-Color3=#b58900
-# ANSI Blue = blue
-Color4=#268bd2
-# ANSI Magenta = magenta
-Color5=#d33682
-# ANSI Cyan = cyan
-Color6=#2aa198
-# ANSI White = base2/white
-Color7=#eee8d5
-# ANSI Bright Black = base03/brblack
 Color8=#002b36
-# ANSI Bright Red = orange/brred
+
+# ANSI red dark/light = red, orange/brred
+Color1=#dc322f
 Color9=#cb4b16
-# ANSI Bright Green = base01/brgreen
+
+# ANSI green dark/light = green, base01/brgreen
+Color2=#859900
 Color10=#586e75
-# ANSI Bright Yellow = base00/bryellow
+
+# ANSI yellow dark/light = yellow, base00/bryellow
+Color3=#b58900
 Color11=#657b83
-# ANSI Bright Blue = base0/brblue
+
+# ANSI blue dark/light = blue, base0/brblue
+Color4=#268bd2
 Color12=#839496
-# ANSI Bright Magenta = violet/brmagenta
+
+# ANSI magenta dark/light = magenta, violet/brmagenta
+Color5=#d33682
 Color13=#6c71c4
-# ANSI Bright Cyan = base1/brcyan
+
+# ANSI cyan dark/light = cyan, base1/brcyan
+Color6=#2aa198
 Color14=#93a1a1
-# ANSI Bright White = base3/brwhite
+
+# ANSI white dark/light = base2/white, base3/brwhite
+Color7=#eee8d5
 Color15=#fdf6e3
 
 [Dark]
-# base03/brblack (Core Color Flip)
+# bg=base03/brblack, fg=base0/brblue, cursor=base1/brcyan
 Background=#002b36
-# base0/brblue (Core Color Flip)
 Foreground=#839496
-# ANSI Black = base2/white (Core Color Flip)
-Color0=#eee8d5
-# ANSI Red = red
+Cursor=#93a1a1
+
+# ANSI black dark/light = base02/black, base03/brblack
+Color0=#073642
+Color8=#002b36
+
+# ANSI red dark/light = red, orange/brred
 Color1=#dc322f
-# ANSI Green = green
-Color2=#859900
-# ANSI Yellow = yellow
-Color3=#b58900
-# ANSI Blue = blue
-Color4=#268bd2
-# ANSI Magenta = magenta
-Color5=#d33682
-# ANSI Cyan = cyan
-Color6=#2aa198
-# ANSI White = base02/black (Core Color Flip)
-Color7=#073642
-# ANSI Bright Black = base3/brwhite (Core Color Flip)
-Color8=#fdf6e3
-# ANSI Bright Red = orange/brred
 Color9=#cb4b16
-# ANSI Bright Green = base1/brcyan (Core Color Flip)
-Color10=#93a1a1
-# ANSI Bright Yellow = base0/brblue (Core Color Flip)
-Color11=#839496
-# ANSI Bright Blue = base00/bryellow (Core Color Flip)
-Color12=#657b83
-# ANSI Bright Magenta = violet/brmagenta
+
+# ANSI green dark/light = green, base01/brgreen
+Color2=#859900
+Color10=#586e75
+
+# ANSI yellow dark/light = yellow, base00/bryellow
+Color3=#b58900
+Color11=#657b83
+
+# ANSI blue dark/light = blue, base0/brblue
+Color4=#268bd2
+Color12=#839496
+
+# ANSI magenta dark/light = magenta, violet/brmagenta
+Color5=#d33682
 Color13=#6c71c4
-# ANSI Bright Cyan = base01/brgreen (Core Color Flip)
-Color14=#586e75
-# ANSI Bright White = base03/brblack (Core Color Flip)
-Color15=#002b36
+
+# ANSI cyan dark/light = cyan, base1/brcyan
+Color6=#2aa198
+Color14=#93a1a1
+
+# ANSI white dark/light = base2/white, base3/brwhite
+Color7=#eee8d5
+Color15=#fdf6e3
 
 
 # SOLARIZED HEX     16/8 TERMCOL  XTERM/HEX   L*A*B      RGB         HSB
