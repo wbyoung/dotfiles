@@ -1,0 +1,8 @@
+# when making changes, you may need to run `ibus restart` to be able to use the
+# new settings.
+
+include "%L"
+
+<Multi_key> <k> : "✅" U2713
+<Multi_key> <v> <minus> : "✓" U2713
+<Multi_key> <v> <v> : "✔" U2705
