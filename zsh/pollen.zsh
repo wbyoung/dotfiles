@@ -37,7 +37,7 @@ pollen-update() {
   if ! [[ -d "${_pollen[location]}" ]]; then
     mkdir -p "$POLLEN"
     echo "\033[0;36mcloning \033[1;35m${_pollen[repo]}\033[0m"
-    git clone -q "${_pollen[repo_url]}" "${_pollen[location]}"
+    git clone -q --depth 1 "${_pollen[repo_url]}" "${_pollen[location]}"
   fi
 }
 
