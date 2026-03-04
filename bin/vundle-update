@@ -1,1 +1,0 @@
-vim --noplugin -u $VIM_SETTINGS/vundles.vim -N "+set hidden" "+syntax on" +BundleClean! +BundleInstall +qall
