@@ -23,6 +23,10 @@ else
     set background=light
 endif
 
+" Limit to 16 ANSI colors to ensure tools don't use colors outside of the
+" defined palette.
+set t_Co=16
+
 set number                      " Line numbers are good
 set backspace=indent,eol,start  " Allow backspace in insert mode
 set history=1000                " Store lots of :cmdline history
