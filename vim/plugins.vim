@@ -16,7 +16,6 @@ if !is_remote
   Plug 'honza/vim-snippets'
   Plug 'jtratner/vim-flavored-markdown'
   Plug 'scrooloose/syntastic'
-  Plug 'flowtype/vim-flow'
 endif
 
 " Git
