@@ -2,7 +2,7 @@ scriptencoding utf-8
 
 " Disable squiggly underline and just use straight underline on color terminals
 " because for many it seems to result in spell checking not being visible.
-if &term == 'xterm-256color' || &term == 'screen-256color'
+if &term =~ '^\(xterm\|screen\)-[0-9]\+color$'
     set t_Cs=
 endif
 
