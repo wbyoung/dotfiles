@@ -1,6 +1,9 @@
 
 if (!empty($SSH_CLIENT) || !empty($SSH_TTY))
-  nnoremap <silent> <leader>y :call system('nc localhost 2224', @")<CR>
+  augroup remote_clipboard
+    autocmd!
+    autocmd TextYankPost * silent! call system('nc localhost 2224', @")
+  augroup END
 endif
 
 
