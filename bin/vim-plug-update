@@ -1,6 +1,6 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
-if (( $+commands[nvim] )); then
+if [ -x "$(command -v nvim)" ]; then
   alias vim=nvim
 fi
 
