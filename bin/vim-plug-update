@@ -1,1 +1,7 @@
+#!/usr/bin/env zsh
+
+if (( $+commands[nvim] )); then
+  alias vim=nvim
+fi
+
 vim --noplugin -u $VIM_SETTINGS/plugins.vim -N "+set hidden" "+syntax on" +PlugClean! +PlugInstall +qall

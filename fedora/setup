@@ -72,6 +72,11 @@ install-packages() {
   sudo dnf install \
     chroma
 
+  # vim
+  sudo dnf install \
+    neovim
+  pip3 install --user --upgrade pynvim # required for jedi-vim in neovim
+
   # vscode
   sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
   echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null

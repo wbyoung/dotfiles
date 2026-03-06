@@ -36,7 +36,9 @@ install-all() {
   self-update
   is-darwin && want-to-install "homebrew" && install-homebrew
   want-to-install "zsh config" && install-files "zsh" "." "zshrc"
-  want-to-install "vim config" && install-files "vim" "." "vim/vimrc"
+  want-to-install "vim config" \
+    && install-files "vim" "." "vim/vimrc" \
+    && install-files ":no-heading:" ".config/nvim/" "vim/nvim/*"
   if want-to-install "git config"; then
     install-files "git" "." "git/*"
     is-option-set "git-sshcmd" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-sshcmd"
@@ -67,7 +69,7 @@ install-homebrew() {
 }
 
 install-files() {
-  log-info "[$1]"
+  [ "$1" != ":no-heading:" ] && log-info "[$1]"
   target_prefix="${2}"
   target_prefix_nodirs="${target_prefix//\//}"
   target_prefix_dir_count=$((${#target_prefix} - ${#target_prefix_nodirs}))
@@ -77,6 +79,9 @@ install-files() {
   done
 
   shift 2
+
+  [ -d "${HOME}/${target_prefix}" ] \
+    || run-cmd mkdir -p "${HOME}/${target_prefix}"
 
   for file in $@; do
     name=$(basename $file)

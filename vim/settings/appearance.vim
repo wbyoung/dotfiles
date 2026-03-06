@@ -6,6 +6,10 @@ if &term =~ '^\(xterm\|screen\)-[0-9]\+color$'
     set t_Cs=
 endif
 
+" Particularly on neovim, ensure that the default is not to display GUI colors
+" so that the 16 base terminal colors are appropriately used for display.
+set notermguicolors
+
 colorscheme solarized
 
 " To simplify setup of vim across local, remote, and tmux based sessions while
@@ -52,3 +56,9 @@ set linebreak    " Wrap lines at convenient points
 " Disable the scrollbars (NERDTree)
 set guioptions-=r
 set guioptions-=L
+
+if has('nvim')
+    hi statusline cterm=NONE gui=NONE
+    hi tabline cterm=NONE gui=NONE
+    hi winbar cterm=NONE gui=NONE
+endif

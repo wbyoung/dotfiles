@@ -4,7 +4,7 @@
 " vim --noplugin -u $VIM_SETTINGS/plugins.vim -N "+set hidden" "+syntax on" +PlugClean! +PlugInstall +qall
 
 source $POLLEN/vim-plug/plug.vim
-call plug#begin()
+call plug#begin('~/.vim/plugged')
 
 let is_remote=trim(system('[ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ] && echo yes')) == "yes"
 
@@ -63,7 +63,9 @@ if !is_remote
   Plug 'bogado/file-line'
   Plug 'mattn/webapi-vim'
   Plug 'sjl/gundo.vim'
-  Plug 'skwp/YankRing.vim'
+  if !has('nvim')
+      Plug 'skwp/YankRing.vim'
+  endif
   Plug 'tpope/vim-surround'
   Plug 'tpope/vim-unimpaired'
   Plug 'vim-scripts/AnsiEsc.vim'
