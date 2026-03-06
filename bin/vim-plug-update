@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 if [ -x "$(command -v nvim)" ]; then
-  alias vim=nvim
+  vim() {
+    command nvim "$@"
+  }
 fi
 
 vim --noplugin -u $VIM_SETTINGS/plugins.vim -N "+set hidden" "+syntax on" +PlugClean! +PlugInstall +qall
