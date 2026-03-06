@@ -59,6 +59,9 @@ set guioptions-=L
 
 if has('nvim')
     hi statusline cterm=NONE gui=NONE
+    hi statuslinenc cterm=NONE gui=NONE
     hi tabline cterm=NONE gui=NONE
+    hi tablinenc cterm=NONE gui=NONE
     hi winbar cterm=NONE gui=NONE
+    hi winbarnc cterm=NONE gui=NONE
 endif
