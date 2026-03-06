@@ -4,7 +4,9 @@ if (!empty($SSH_CLIENT) || !empty($SSH_TTY))
 endif
 
 
-if ($XDG_SESSION_TYPE ==# 'wayland' || !empty($WAYLAND_DISPLAY))
+if has('nvim')
+  set clipboard=unnamedplus
+elseif ($XDG_SESSION_TYPE ==# 'wayland' || !empty($WAYLAND_DISPLAY))
   augroup wayland_clipboard
     autocmd!
     autocmd TextYankPost * silent! call system('wl-copy --trim-newline', @")
