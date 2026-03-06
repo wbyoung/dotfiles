@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# vim: set ft=bash :
 
 cd "$(dirname "$0")/.."
 shopt -s extglob
@@ -189,7 +190,7 @@ parse-flag() {
 parse-options() {
   while [ $# -ne 0 ]; do
     case "${1}" in
-      -p|--?\(no\)prompt)
+      -p|--?(no)prompt)
         OPTIONS["prompt"]=$(parse-flag "${1}")
         shift
         ;;
@@ -201,51 +202,51 @@ parse-options() {
         OPTIONS["dry-run"]="yes"
         shift
         ;;
-      --?\(no\)zsh-config)
+      --?(no)zsh-config)
         OPTIONS["zsh-config"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)vim-config)
+      --?(no)vim-config)
         OPTIONS["vim-config"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)git-config)
+      --?(no)git-config)
         OPTIONS["git-config"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)git-config-sshcmd)
+      --?(no)git-config-sshcmd)
         OPTIONS["git-sshcmd"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)git-config-gpgssh)
+      --?(no)git-config-gpgssh)
         OPTIONS["git-gpgssh"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)gist-commands)
+      --?(no)gist-commands)
         OPTIONS["gist-commands"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)vscode-config)
+      --?(no)vscode-config)
         OPTIONS["vscode-config"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)tmux-config)
+      --?(no)tmux-config)
         OPTIONS["tmux-config"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)homebrew)
+      --?(no)homebrew)
         OPTIONS["homebrew"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)miscellaneous-config)
+      --?(no)miscellaneous-config)
         OPTIONS["miscellaneous-config"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)osx-defaults)
+      --?(no)osx-defaults)
         OPTIONS["osx-defaults"]=$(parse-flag "${1}")
         shift
         ;;
-      --?\(no\)fedora-settings)
+      --?(no)fedora-settings)
         OPTIONS["fedora-settings"]=$(parse-flag "${1}")
         shift
         ;;
