@@ -61,7 +61,7 @@ install-homebrew() {
   log-info "[homebrew]"
 
   run-cmd which brew
-  [[ $? -eq 0 ]] || run-cmd install-homebrew[via curl]
+  [[ $? -eq 0 ]] || run-cmd install-homebrew-via-curl
   run-cmd brew update
   run-cmd brew install -q cloc coreutils git gpg grc hub jq node python python3 tmux terminal-notifier the_silver_searcher zsh reattach-to-user-namespace vim
   run-cmd brew install -q --cask --appdir=/Applications flux google-chrome visual-studio-code
@@ -109,7 +109,7 @@ install-files() {
   done
 }
 
-install-homebrew() {
+install-homebrew-via-curl() {
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
