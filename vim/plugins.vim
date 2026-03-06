@@ -63,7 +63,9 @@ if !is_remote
   Plug 'bogado/file-line'
   Plug 'mattn/webapi-vim'
   Plug 'sjl/gundo.vim'
-  if !has('nvim')
+  if has('nvim')
+      Plug 'gbprod/yanky.nvim'
+  else
       Plug 'skwp/YankRing.vim'
   endif
   Plug 'tpope/vim-surround'
