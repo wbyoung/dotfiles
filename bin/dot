@@ -88,18 +88,18 @@ self-update() {
 
 install-zsh-config() {
   log-info "[zsh]"
-  install-files "." "zshrc"
+  install-dotfiles "." "zshrc"
 }
 
 install-vim-config() {
   log-info "[vim]"
-  install-files "." "vim/vimrc"
-  install-files ".config/nvim/" "vim/nvim/*"
+  install-dotfiles "." "vim/vimrc"
+  install-dotfiles ".config/nvim/" "vim/nvim/*"
 }
 
 install-git-config() {
   log-info "[git]"
-  install-files "." "git/*"
+  install-dotfiles "." "git/*"
   is-config-set "git-sshcmd" && run-cmd setup-git-sshcmd
   is-config-set "git-gpgssh" && run-cmd setup-git-gpgssh
 }
@@ -111,17 +111,17 @@ install-gist-commands() {
 
 install-vscode-config() {
   log-info "[vscode]"
-  install-files ".config/Code/User/" "vscode/*"
+  install-dotfiles ".config/Code/User/" "vscode/*"
 }
 
 install-tmux-config() {
   log-info "[tmux]"
-  install-files "." "tmux/*"
+  install-dotfiles "." "tmux/*"
 }
 
 install-miscellaneous-config() {
   log-info "[misc]"
-  install-files "." "misc/*"
+  install-dotfiles "." "misc/*"
 }
 
 run-fedora-setup() {
@@ -157,7 +157,7 @@ install-homebrew-via-curl() {
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
-install-files() {
+install-dotfiles() {
   local target_prefix="${1}"
   local target_prefix_nodirs="${target_prefix//\//}"
   local target_prefix_dir_count=$((${#target_prefix} - ${#target_prefix_nodirs}))
