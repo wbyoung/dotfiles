@@ -272,7 +272,7 @@ script-init() {
 }
 
 load-config() {
-  if ! [ -f "$CONFIG_FILE" ]
+  if ! [ -f "$CONFIG_FILE" ]; then
     return
   fi
   if [ -f "$CONFIG_FILE" ] && ! has-jq; then
