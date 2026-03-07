@@ -21,15 +21,31 @@ if [ -t 1 ] && (
     export CLICOLOR=true
 fi
 
-if [ "${CLICOLOR}" = "true" ] || [ "${CLICOLOR}" = "1" ]; then
-    YELLOW="\033[0;33m"
-    BLUE="\033[0;34m"
-    MAGENTA="\033[0;35m"
-    CYAN="\033[0;36m"
-    RED="\033[0;31m"
-    BOLD="\033[1m"
-    RESET="\033[0m"
-fi
+{
+  [ "${CLICOLOR:-}" = "true" ] || [ "${CLICOLOR:-}" = "1" ] && \
+    tty_only() { printf "${1}"; } || \
+    tty_only() { printf ""; }
+
+  cli_color() { tty_only "\033[0;${1}m"; }
+
+  RED=$(cli_color "31")
+  GREEN=$(cli_color "32")
+  YELLOW=$(cli_color "33")
+  BLUE=$(cli_color "34")
+  MAGENTA=$(cli_color "35")
+  CYAN=$(cli_color "36")
+  BOLD=$(tty_only "\033[1m")
+  RESET=$(tty_only "\033[0m")
+  HIDE_CURSOR=$(tty_only "\x1b[?25l")
+  SHOW_CURSOR=$(tty_only "\x1b[?25h")
+  CURSOR_UP_ONE_LINE=$(tty_only "\x1b[1A")
+  CURSOR_DOWN_ONE_LINE=$(tty_only "\x1b[1B")
+  CLEAR_CURRENT_LINE=$(tty_only "\x1b[2K")
+  CLEAR_LAST_LINE=$(tty_only "${CURSOR_UP_ONE_LINE}${CLEAR_CURRENT_LINE}")
+
+  unset -f tty_only;
+  unset -f cli_color;
+}
 
 dot-main() {
   script-init "$@"
