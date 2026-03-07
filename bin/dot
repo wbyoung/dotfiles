@@ -76,13 +76,13 @@ install-vim-config() {
 install-git-config() {
   log-info "[git]"
   install-files "." "git/*"
-  is-option-set "git-sshcmd" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-sshcmd"
-  is-option-set "git-gpgssh" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-gpgssh"
+  is-option-set "git-sshcmd" && run-cmd setup-git-sshcmd
+  is-option-set "git-gpgssh" && run-cmd setup-git-gpgssh
 }
 
 install-gist-commands() {
   log-info "[gist]"
-  run-cmd bash -c "$HOME/.dotfiles/bin/setup-gist-commands"
+  run-cmd setup-gist-commands
 }
 
 install-vscode-config() {
