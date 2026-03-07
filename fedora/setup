@@ -77,8 +77,11 @@ write-ptyxis-settings() {
 }
 
 install-devtools() {
-  sudo dnf -yq install \
-    @development-tools \
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    gettext \
+    git \
+    patch \
+    patchutils \
     gcc-c++ \
     python3-devel \
     python3.13 \
@@ -86,26 +89,34 @@ install-devtools() {
 }
 
 install-zsh-plugin-dependencies() {
-  sudo dnf -yq install \
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
     chroma
 }
 
 install-vim() {
-  sudo dnf -yq install \
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
     neovim
-  pip3 install --user --upgrade pynvim # required for jedi-vim in neovim
+  pip3 install --quiet --user --upgrade pynvim # required for jedi-vim in neovim
 }
 
 install-vscode() {
   sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-  echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null
-  dnf -yq check-update
-  sudo dnf -yq install code # or code-insiders
+  echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" \
+    | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null
+  dnf check-update &> /dev/null
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    code # or code-insiders
 }
 
 install-docker() {
-  sudo dnf -yq config-manager addrepo --from-repofile https://download.docker.com/linux/fedora/docker-ce.repo
-  sudo dnf -yq install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  sudo dnf -yq config-manager addrepo 2> /dev/null \
+    --from-repofile https://download.docker.com/linux/fedora/docker-ce.repo
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
   (cat /etc/docker/daemon.json 2> /dev/null || echo '{}') \
     | jq '."log-driver" = "local" | ."log-opts"."max-size" = "10m"' \
     | sudo tee /etc/docker/daemon.json > /dev/null
@@ -115,13 +126,17 @@ install-docker() {
 }
 
 install-brave() {
-  sudo dnf -yq config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
-  sudo dnf -yq install brave-browser
+  sudo dnf -yq config-manager addrepo 2> /dev/null \
+    --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    brave-browser
 }
 
 install-gh() {
-  sudo dnf -yq config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
-  sudo dnf -yq install gh --repo gh-cli
+  sudo dnf -yq config-manager addrepo 2> /dev/null \
+    --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
+  sudo dnf --assumeyes --quiet install --repo gh-cli 2> /dev/null \
+    gh
 }
 
 if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
