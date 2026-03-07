@@ -130,10 +130,10 @@ run-osx-setup() {
 }
 
 install-files() {
-  target_prefix="${1}"
-  target_prefix_nodirs="${target_prefix//\//}"
-  target_prefix_dir_count=$((${#target_prefix} - ${#target_prefix_nodirs}))
-  relative_to_home=""
+  local target_prefix="${1}"
+  local target_prefix_nodirs="${target_prefix//\//}"
+  local target_prefix_dir_count=$((${#target_prefix} - ${#target_prefix_nodirs}))
+  local relative_to_home=""
   for (( i=0; i<$target_prefix_dir_count; i++ )); do
     relative_to_home+="../"
   done
@@ -143,34 +143,47 @@ install-files() {
   [ -d "${HOME}/${target_prefix}" ] \
     || run-cmd mkdir -p "${HOME}/${target_prefix}"
 
+  if [ "${target_prefix}" = "." ]; then
+    target_prefix=""
+  fi
+
   for file in $@; do
-    name=$(basename $file)
-    basepath=$([ "$(dirname "$PWD")" == "$HOME" ] \
-        && (echo "$relative_to_home$(basename "$PWD")") \
-        || echo "$PWD")
-    source="$basepath/$file"
-    target="$HOME/$target_prefix$name"
-    overwrite_reason=""
-
-    if [ -L "$target" ]; then
-      if [ "$(readlink "$target")" != "$source" ]; then
-        overwrite_reason="wrong symlink"
-      fi
-    elif [ -e "$target" ]; then
-      overwrite_reason="not a symlink"
-    fi
-
-    if [ -n "$overwrite_reason" ]; then
-      log-error "overwriting ${target} (${overwrite_reason}), leaving original at ${target}.backup"
-      run-cmd mv "$target" "$target.backup"
-    fi
-
-    run-cmd ln -nfs "${source}" "${target}"
+    run-cmd link-dotfile "${file}" "${target_prefix}"
   done
 }
 
 install-homebrew-via-curl() {
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+}
+
+link-dotfile() {
+  local file="$1"
+  local target_prefix="${2:-.}"
+  local name=$(basename $file)
+  local basepath=$([ "$(dirname "$PWD")" == "$HOME" ] \
+      && (echo "$relative_to_home$(basename "$PWD")") \
+      || echo "$PWD")
+  local source="$basepath/$file"
+  local target="$HOME/$target_prefix$name"
+  local overwrite_reason=""
+
+  [ -d "${HOME}/${target_prefix}" ] \
+    || mkdir -p "${HOME}/${target_prefix}"
+
+  if [ -L "$target" ]; then
+    if [ "$(readlink "$target")" != "$source" ]; then
+      overwrite_reason="wrong symlink"
+    fi
+  elif [ -e "$target" ]; then
+    overwrite_reason="not a symlink"
+  fi
+
+  if [ -n "$overwrite_reason" ]; then
+    log-warning "overwriting ${target} (${overwrite_reason}), leaving original at ${target}.backup"
+    mv "$target" "$target.backup"
+  fi
+
+  ln -nfs "${source}" "${target}"
 }
 
 run-cmd() {
