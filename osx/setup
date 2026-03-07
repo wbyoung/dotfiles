@@ -10,8 +10,8 @@ setup-main() {
 }
 
 write-settings() {
-  if [[ "$(defaults read localhost.wbyoung.defaults setup 2>/dev/null)" = "1" ]] && \
-     [[ "$OSX_SETUP" != "1" ]]; then
+  if [ "$(defaults read localhost.wbyoung.defaults setup 2>/dev/null)" = "1" ] && \
+     [ "$OSX_SETUP" != "1" ]; then
     echo "Setup has already been performed. Re-run with OSX_SETUP=1" 1>&2
     exit 1
   else
@@ -22,7 +22,7 @@ write-settings() {
   log-info "Requesting admin password prior to installing apps"
   run-cmd sudo -v
 
-  if [[ "$?" != "0" ]]; then
+  if [ "$?" != "0" ]; then
     exit 1
   fi
 
@@ -237,6 +237,6 @@ kill-affected-apps() {
   done
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
   setup-main "$@"
 fi

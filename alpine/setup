@@ -19,6 +19,6 @@ install-packages() {
     && run-cmd apk -q add vim
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
   setup-main "$@"
 fi

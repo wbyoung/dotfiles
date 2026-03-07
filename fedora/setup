@@ -16,8 +16,8 @@ write-settings() {
 }
 
 install-packages() {
-  if [[ "$(dconf read /localhost/wbyoung/dot/packages 2>/dev/null)" = "true" ]] && \
-    [[ "$FEDORA_PACKAGES" != "1" ]]; then
+  if [ "$(dconf read /localhost/wbyoung/dot/packages 2>/dev/null)" = "true" ] && \
+    [ "$FEDORA_PACKAGES" != "1" ]; then
     printf "${RED}${BOLD}Packages have already been installed.${RESET} " 1>&2
     printf "${YELLOW}Re-run with FEDORA_PACKAGES=1${RESET}\n" 1>&2
     return 1
@@ -124,6 +124,6 @@ install-gh() {
   sudo dnf -yq install gh --repo gh-cli
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
   setup-main "$@"
 fi
