@@ -15,7 +15,7 @@ write-settings() {
 }
 
 install-packages() {
-  is-config-set "vim" \
+  is-config-set "vim-config" \
     && run-cmd apk -q add vim
 }
 

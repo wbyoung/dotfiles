@@ -34,11 +34,11 @@ install-packages() {
   run-cmd install-docker
   run-cmd install-brave
 
-  is-config-set "zsh" \
+  is-config-set "zsh-config" \
     && run-cmd install-zsh-plugin-dependencies
-  is-config-set "vim" \
+  is-config-set "vim-config" \
     && run-cmd install-vim
-  is-config-set "git" \
+  is-config-set "git-config" \
     && run-cmd install-gh
 }
 
