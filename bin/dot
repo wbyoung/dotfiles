@@ -65,7 +65,7 @@ install-zsh-config() {
 
 install-vim-config() {
   log-info "[vim]"
-  install-files "." "vim/vimrc" \
+  install-files "." "vim/vimrc"
   install-files ".config/nvim/" "vim/nvim/*"
 }
 
