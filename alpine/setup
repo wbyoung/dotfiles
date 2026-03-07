@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# vim: set ft=bash :
+
+cd "$(dirname "$0")/.."
+source bin/dot
+
+setup-main() {
+  script-init "$@"
+  write-settings
+  install-packages
+}
+
+write-settings() {
+  return
+}
+
+install-packages() {
+  is-config-set "vim" \
+    && run-cmd apk -q add vim
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  setup-main "$@"
+fi

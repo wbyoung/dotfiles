@@ -1,25 +1,54 @@
 #!/usr/bin/env bash
+# vim: set ft=bash :
 
+cd "$(dirname "$0")/.."
+source bin/dot
 
-if [ -t 1 ] && [ -n "$(tput colors)" ] && [ "$(tput colors)" -ge 8 ]; then
-    export CLICOLOR=true
-fi
-
-if [ "${CLICOLOR}" = "true" ] || [ "${CLICOLOR}" = "1" ]; then
-    YELLOW="\033[0;33m"
-    BLUE="\033[0;34m"
-    MAGENTA="\033[0;35m"
-    CYAN="\033[0;36m"
-    RED="\033[0;31m"
-    BOLD="\033[1m"
-    RESET="\033[0m"
-fi
+setup-main() {
+  script-init "$@"
+  write-settings
+  install-packages
+}
 
 write-settings() {
+  run-cmd write-gnome-settings
+  run-cmd write-ptyxis-settings
+}
+
+install-packages() {
+  if [[ "$(dconf read /localhost/wbyoung/dot/packages 2>/dev/null)" = "true" ]] && \
+    [[ "$FEDORA_PACKAGES" != "1" ]]; then
+    printf "${RED}${BOLD}Packages have already been installed.${RESET} " 1>&2
+    printf "${YELLOW}Re-run with FEDORA_PACKAGES=1${RESET}\n" 1>&2
+    return 1
+  else
+    dconf write /localhost/wbyoung/dot/packages "true"
+  fi
+
+  # ask for the administrator password upfront
+  log-info "Requesting admin password prior to installing apps"
+  run-cmd sudo -v
+
+  run-cmd install-devtools
+  run-cmd install-vscode
+  run-cmd install-docker
+  run-cmd install-brave
+
+  is-config-set "zsh" \
+    && run-cmd install-zsh-plugin-dependencies
+  is-config-set "vim" \
+    && run-cmd install-vim
+  is-config-set "git" \
+    && run-cmd install-gh
+}
+
+write-gnome-settings() {
   # map capslock to escape while retaining 'lv3:ralt_switch' default setting
   gsettings set org.gnome.desktop.input-sources xkb-options "['lv3:rwin_switch', 'caps:escape_shifted_capslock', 'compose:ralt']"
   gsettings set org.gnome.settings-daemon.plugins.housekeeping donation-reminder-enabled false
+}
 
+write-ptyxis-settings() {
   terminal_profile_id=$(dconf read /org/gnome/Ptyxis/default-profile-uuid)
   terminal_profile_id=${terminal_profile_id#\'}
   terminal_profile_id=${terminal_profile_id%\'}
@@ -47,60 +76,54 @@ write-settings() {
   dconf write /org/gnome/Ptyxis/Shortcuts/reset-and-clear "'<Shift><Control>k'"
 }
 
-install-packages() {
-  if [[ "$(dconf read /localhost/wbyoung/dot/packages 2>/dev/null)" = "true" ]] && \
-    [[ "$FEDORA_PACKAGES" != "1" ]]; then
-    printf "${RED}${BOLD}Packages have already been installed.${RESET} " 1>&2
-    printf "${YELLOW}Re-run with FEDORA_PACKAGES=1${RESET}\n" 1>&2
-    return 1
-  else
-    dconf write /localhost/wbyoung/dot/packages "true"
-  fi
-
-  # ask for the administrator password upfront
-  sudo -v
-
-  # development tools
-  sudo dnf install \
+install-devtools() {
+  sudo dnf -yq install \
     @development-tools \
     gcc-c++ \
     python3-devel \
     python3.13 \
     python3.13-devel
+}
 
-  # command line extras for oh-my-zsh plugins
-  sudo dnf install \
+install-zsh-plugin-dependencies() {
+  sudo dnf -yq install \
     chroma
+}
 
-  # vim
-  sudo dnf install \
+install-vim() {
+  sudo dnf -yq install \
     neovim
   pip3 install --user --upgrade pynvim # required for jedi-vim in neovim
+}
 
-  # vscode
+install-vscode() {
   sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
   echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null
-  dnf check-update
-  sudo dnf install code # or code-insiders
+  dnf -yq check-update
+  sudo dnf -yq install code # or code-insiders
+}
 
-  # docker
-  sudo dnf config-manager addrepo --from-repofile https://download.docker.com/linux/fedora/docker-ce.repo
-  sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+install-docker() {
+  sudo dnf -yq config-manager addrepo --from-repofile https://download.docker.com/linux/fedora/docker-ce.repo
+  sudo dnf -yq install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   cat /etc/docker/daemon.json 2> /dev/null || echo '{}' \
     | jq '."log-driver" = "local" | ."log-opts"."max-size" = "10m"' \
     | sudo tee /etc/docker/daemon.json > /dev/null
   sudo systemctl enable --now docker
   sudo usermod -aG docker $USER
   newgrp docker
-
-  # brave browser
-  sudo dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
-  sudo dnf install brave-browser
-
-  # gh command line tool
-  sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
-  sudo dnf install gh --repo gh-cli
 }
 
-install-packages
-write-settings
+install-brave() {
+  sudo dnf -yq config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+  sudo dnf -yq install brave-browser
+}
+
+install-gh() {
+  sudo dnf -yq config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
+  sudo dnf -yq install gh --repo gh-cli
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  setup-main "$@"
+fi

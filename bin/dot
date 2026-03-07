@@ -4,6 +4,9 @@
 cd "$(dirname "$0")/.."
 shopt -s extglob
 
+declare -r ARGS=("$@")
+declare -r CONFIG_FILE="${PWD}/config.json"
+declare -A CONFIG
 declare -A OPTIONS
 
 if [ -t 1 ] && (
@@ -12,8 +15,8 @@ if [ -t 1 ] && (
     && [ -n "$(tput colors)" ] \
     && [ "$(tput colors)" -ge 8 ] \
   ) \
-  || [[ "$TERM" == *color* ]] \
-  || [[ -n "$COLORTERM" ]] \
+  || [ "$TERM" == *color* ] \
+  || [-n "$COLORTERM"] \
 ); then
     export CLICOLOR=true
 fi
@@ -29,28 +32,25 @@ if [ "${CLICOLOR}" = "true" ] || [ "${CLICOLOR}" = "1" ]; then
 fi
 
 dot-main() {
-  parse-options "$@"
+  script-init "$@"
+  store-config # store prior to install in case things fail
   install-all
+  store-config
 }
 
 install-all() {
   self-update
+  want-to-install "zsh config" && install-zsh-config
+  want-to-install "vim config" && install-vim-config
+  want-to-install "git config" && install-git-config
+  want-to-install "gist commands" && install-gist-commands
+  want-to-install "vscode config" && install-vscode-config
+  want-to-install "tmux config" && install-tmux-config
+  want-to-install "miscellaneous config" && install-miscellaneous-config
+  is-fedora-linux && want-to-install "fedora settings" "and apps" && run-fedora-setup
+  is-alpine-linux && want-to-install "alpine settings" "and apps" && run-alpine-setup
   is-darwin && want-to-install "homebrew" && install-homebrew
-  want-to-install "zsh config" && install-files "zsh" "." "zshrc"
-  want-to-install "vim config" \
-    && install-files "vim" "." "vim/vimrc" \
-    && install-files ":no-heading:" ".config/nvim/" "vim/nvim/*"
-  if want-to-install "git config"; then
-    install-files "git" "." "git/*"
-    is-option-set "git-sshcmd" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-sshcmd"
-    is-option-set "git-gpgssh" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-gpgssh"
-  fi
-  want-to-install "gist commands" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-gist-commands"
-  want-to-install "vscode config" && install-files "vscode" ".config/Code/User/" "vscode/*"
-  want-to-install "tmux config" && install-files "tmux" "." "tmux/*"
-  want-to-install "miscellaneous config" && install-files "misc" "." "misc/*"
-  is-darwin && want-to-install "osx defaults" && run-cmd "osx/setup"
-  is-fedora-linux && want-to-install "fedora settings" && run-cmd "fedora/setup"
+  is-darwin && want-to-install "osx settings" "and apps" && run-osx-setup
 }
 
 self-update() {
@@ -58,20 +58,75 @@ self-update() {
   run-cmd "git pull origin -q --ff-only"
 }
 
+install-zsh-config() {
+  log-info "[zsh]"
+  install-files "." "zshrc"
+}
+
+install-vim-config() {
+  log-info "[vim]"
+  install-files "." "vim/vimrc" \
+  install-files ".config/nvim/" "vim/nvim/*"
+}
+
+install-git-config() {
+  log-info "[git]"
+  install-files "." "git/*"
+  is-option-set "git-sshcmd" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-sshcmd"
+  is-option-set "git-gpgssh" && run-cmd bash -c "$HOME/.dotfiles/bin/setup-git-gpgssh"
+}
+
+install-gist-commands() {
+  log-info "[gist]"
+  run-cmd bash -c "$HOME/.dotfiles/bin/setup-gist-commands"
+}
+
+install-vscode-config() {
+  log-info "[vscode]"
+  install-files ".config/Code/User/" "vscode/*"
+}
+
+install-tmux-config() {
+  log-info "[tmux]"
+  install-files "." "tmux/*"
+}
+
+install-miscellaneous-config() {
+  log-info "[misc]"
+  install-files "." "misc/*"
+}
+
+run-fedora-setup() {
+  log-info "[fedora]"
+  log-detail "[exec] fedora/setup"
+  fedora/setup "${ARGS[@]}"
+}
+
+run-alpine-setup() {
+  log-info "[alpine]"
+  log-detail "[exec] alpine/setup"
+  alpine/setup "${ARGS[@]}"
+}
+
 install-homebrew() {
   log-info "[homebrew]"
 
   run-cmd which brew
-  [[ $? -eq 0 ]] || run-cmd install-homebrew-via-curl
+  [ $? -eq 0 ] || run-cmd install-homebrew-via-curl
   run-cmd brew update
   run-cmd brew install -q cloc coreutils git gpg grc hub jq node python python3 tmux terminal-notifier the_silver_searcher zsh reattach-to-user-namespace vim
   run-cmd brew install -q --cask --appdir=/Applications flux google-chrome visual-studio-code
   run-cmd brew install -q --no-quarantine grishka/grishka/neardrop
 }
 
+run-osx-setup() {
+  log-info "[osx]"
+  log-detail "[exec] osx/setup"
+  osx/setup "${ARGS[@]}"
+}
+
 install-files() {
-  [ "$1" != ":no-heading:" ] && log-info "[$1]"
-  target_prefix="${2}"
+  target_prefix="${1}"
   target_prefix_nodirs="${target_prefix//\//}"
   target_prefix_dir_count=$((${#target_prefix} - ${#target_prefix_nodirs}))
   relative_to_home=""
@@ -79,29 +134,29 @@ install-files() {
     relative_to_home+="../"
   done
 
-  shift 2
+  shift
 
   [ -d "${HOME}/${target_prefix}" ] \
     || run-cmd mkdir -p "${HOME}/${target_prefix}"
 
   for file in $@; do
     name=$(basename $file)
-    basepath=$([[ "$(dirname "$PWD")" == "$HOME" ]] \
+    basepath=$([ "$(dirname "$PWD")" == "$HOME" ] \
         && (echo "$relative_to_home$(basename "$PWD")") \
         || echo "$PWD")
     source="$basepath/$file"
     target="$HOME/$target_prefix$name"
     overwrite_reason=""
 
-    if [[ -L "$target" ]]; then
-      if [[ "$(readlink "$target")" != "$source" ]]; then
+    if [ -L "$target" ]; then
+      if [ "$(readlink "$target")" != "$source" ]; then
         overwrite_reason="wrong symlink"
       fi
-    elif [[ -e "$target" ]]; then
+    elif [ -e "$target" ]; then
       overwrite_reason="not a symlink"
     fi
 
-    if [[ -n "$overwrite_reason" ]]; then
+    if [ -n "$overwrite_reason" ]; then
       log-error "overwriting ${target} (${overwrite_reason}), leaving original at ${target}.backup"
       run-cmd mv "$target" "$target.backup"
     fi
@@ -117,7 +172,7 @@ install-homebrew-via-curl() {
 run-cmd() {
   log-detail "[exec] ${*}"
 
-  if [[ "${OPTIONS["dry-run"]}" != "yes" ]]; then
+  if [ "${OPTIONS["dry-run"]}" != "yes" ]; then
     $@
   fi
 }
@@ -130,61 +185,115 @@ log-detail() {
   printf "${MAGENTA}${*}${RESET}\n"
 }
 
+log-warning () {
+  printf "${YELLOW}${*}${RESET}\n" 1>&2
+}
+
 log-error () {
   printf "${RED}${*}${RESET}\n" 1>&2
 }
 
-is-darwin() {
-  [[ "$OSTYPE" == darwin* ]] && return 0 || return 1
+is-fedora-linux() {
+  [ -f /etc/os-release ] \
+    && [ "$(source /etc/os-release && echo $ID)" == "fedora" ] \
+    && return 0 || return 1
 }
 
 is-alpine-linux() {
-  [[ -f /etc/os-release ]] \
-    && [[ "$(source /etc/os-release && echo $ID)" == "alpine" ]] \
+  [ -f /etc/os-release ] \
+    && [ "$(source /etc/os-release && echo $ID)" == "alpine" ] \
     && return 0 || return 1
 }
 
-is-fedora-linux() {
-  [[ -f /etc/os-release ]] \
-    && [[ "$(source /etc/os-release && echo $ID)" == "fedora" ]] \
-    && return 0 || return 1
+is-darwin() {
+  [ "$OSTYPE" == darwin* ] && return 0 || return 1
+}
+
+is-dry-run() {
+  is-option-set "dry-run"
 }
 
 is-option-set() {
-  [[ "${OPTIONS[${1}]}" == "yes" ]] \
+  [ "${OPTIONS[${1}]}" == "yes" ] \
     && return 0 || return 1
 }
 
-want-to-install() {
-  section="${1}"
-  option_key="${section// /-}"
-  option_value="${OPTIONS[${option_key}]}"
+is-config-set() {
+  [ "${CONFIG[${1}]}" == "yes" ] \
+    && return 0 || return 1
+}
 
-  if [[ -n "$option_value" ]]; then
-    is-option-set "$option_key"
-    return $?
+has-jq() {
+  [ -x "$(command -v jq)" ]
+}
+
+want-to-install() {
+  local topic="${1}"
+  local message_details="${2}"
+  local config_key="${topic// /-}"
+  local config_value="${CONFIG[${config_key}]}"
+  local result=""
+  local install_prompt="install ${topic}"
+
+  if [ -n "$message_details" ]; then
+    install_prompt+=" (${message_details})"
+  fi
+
+  if [ -n "$config_value" ]; then
+    is-config-set "$config_key"
+    result=$?
   elif is-option-set "prompt"; then
-    while [[ true ]]; do
-      printf "${CYAN}install ${section}? ${MAGENTA}[y/n] ${RESET}"
+    while [ true ]; do
+      printf "${CYAN}install ${topic}? ${MAGENTA}[y/n] ${RESET}"
       read response
       case "$response" in
           y)
-              return 0
+              result=0
               ;;
           n)
-              return 1
+              result=1
               ;;
       esac
     done
   elif is-option-set "choose"; then
-    return 1 # for `--choose` the default is that nothing is installed
+    result=1 # for `--choose` the default is that nothing is installed
   else
-    return 0 # the default is that everything is installed
+    result=0 # the default is that everything is installed
   fi
+
+  CONFIG["$config_key"]="$([ "${result}" -eq 0 ] && echo yes || echo no)"
+
+  return $result
+}
+
+script-init() {
+  load-config
+  parse-options "$@"
+}
+
+load-config() {
+  if [ -f "$CONFIG_FILE" ] && ! has-jq; then
+    log-warning "no \`jq\` found, skipping loading of .dotfiles/config.json"
+    return
+  fi
+  while IFS="=" read -r key value; do
+    CONFIG["$key"]="$value"
+  done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' "$CONFIG_FILE")
+}
+
+store-config() {
+  is-dry-run && return
+  has-jq || { log-warning "no \`jq\` found, .dotfiles/config.json not saved"; return; }
+
+  args=()
+  for i in "${!CONFIG[@]}"; do
+    args+=("--arg" "$i" "${CONFIG[$i]}")
+  done
+  jq --null-input --sort-keys "${args[@]}" '$ARGS.named' > "$CONFIG_FILE"
 }
 
 parse-flag() {
-  [[ "${1}" == "--no"* ]] && echo "no" || echo "yes"
+  [ "${1}" == "--no"* ] && echo "no" || echo "yes"
 }
 
 parse-options() {
@@ -203,51 +312,55 @@ parse-options() {
         shift
         ;;
       --?(no)zsh-config)
-        OPTIONS["zsh-config"]=$(parse-flag "${1}")
+        CONFIG["zsh-config"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)vim-config)
-        OPTIONS["vim-config"]=$(parse-flag "${1}")
+        CONFIG["vim-config"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)git-config)
-        OPTIONS["git-config"]=$(parse-flag "${1}")
+        CONFIG["git-config"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)git-config-sshcmd)
-        OPTIONS["git-sshcmd"]=$(parse-flag "${1}")
+        CONFIG["git-sshcmd"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)git-config-gpgssh)
-        OPTIONS["git-gpgssh"]=$(parse-flag "${1}")
+        CONFIG["git-gpgssh"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)gist-commands)
-        OPTIONS["gist-commands"]=$(parse-flag "${1}")
+        CONFIG["gist-commands"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)vscode-config)
-        OPTIONS["vscode-config"]=$(parse-flag "${1}")
+        CONFIG["vscode-config"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)tmux-config)
-        OPTIONS["tmux-config"]=$(parse-flag "${1}")
-        shift
-        ;;
-      --?(no)homebrew)
-        OPTIONS["homebrew"]=$(parse-flag "${1}")
+        CONFIG["tmux-config"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)miscellaneous-config)
-        OPTIONS["miscellaneous-config"]=$(parse-flag "${1}")
-        shift
-        ;;
-      --?(no)osx-defaults)
-        OPTIONS["osx-defaults"]=$(parse-flag "${1}")
+        CONFIG["miscellaneous-config"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)fedora-settings)
-        OPTIONS["fedora-settings"]=$(parse-flag "${1}")
+        CONFIG["fedora-settings"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)alpine-settings)
+        CONFIG["alpine-settings"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)osx-settings)
+        CONFIG["osx-settings"]=$(parse-flag "${1}")
+        shift
+        ;;
+      --?(no)homebrew)
+        CONFIG["homebrew"]=$(parse-flag "${1}")
         shift
         ;;
       -h|--help)
@@ -269,16 +382,17 @@ usage() {
   echo
   echo "Options:"
   echo "	-p, --[no-]prompt	Prompt to install each item"
-  echo "	-c, --choose	Require opting to install each item"
+  echo "	-c, --choose	Require opting in to install each item"
   echo "	-d, --dry-run	Do not actually run commands"
   echo "	--[no-]fedora-settings"
+  echo "	--[no-]alpine-settings"
   echo "	--[no-]git-config-gpgssh"
   echo "	--[no-]git-config-sshcmd"
   echo "	--[no-]git-config"
   echo "	--[no-]gist-commands"
   echo "	--[no-]homebrew"
   echo "	--[no-]miscellaneous-config"
-  echo "	--[no-]osx-defaults"
+  echo "	--[no-]osx-settings"
   echo "	--[no-]tmux-config"
   echo "	--[no-]vim-config"
   echo "	--[no-]vscode-config"
@@ -286,5 +400,7 @@ usage() {
   echo "	--help"
 }
 
-dot-main "$@"
-exit 0
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  dot-main "$@"
+fi

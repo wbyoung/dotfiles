@@ -1,115 +1,148 @@
 #!/usr/bin/env bash
+# vim: set ft=bash :
 
-if [[ "$(defaults read localhost.wbyoung.defaults setup 2>/dev/null)" = "1" ]] && \
-   [[ "$OSX_SETUP" != "1" ]]; then
-  echo "Setup has already been performed. Re-run with OSX_SETUP=1" 1>&2
-  exit 1
-else
-  defaults write localhost.wbyoung.defaults setup 1
-fi
+cd "$(dirname "$0")/.."
+source bin/dot
 
-# Ask for the administrator password upfront
-sudo -v
+setup-main() {
+  script-init "$@"
+  write-settings
+}
 
-if [[ "$?" != "0" ]]; then
-  exit 1
-fi
+write-settings() {
+  if [[ "$(defaults read localhost.wbyoung.defaults setup 2>/dev/null)" = "1" ]] && \
+     [[ "$OSX_SETUP" != "1" ]]; then
+    echo "Setup has already been performed. Re-run with OSX_SETUP=1" 1>&2
+    exit 1
+  else
+    defaults write localhost.wbyoung.defaults setup 1
+  fi
+
+  # ask for the administrator password upfront
+  log-info "Requesting admin password prior to installing apps"
+  run-cmd sudo -v
+
+  if [[ "$?" != "0" ]]; then
+    exit 1
+  fi
+
+  run-cmd write-ui-settings
+  run-cmd write-finder-settings
+  run-cmd write-dock-settings
+  run-cmd write-mail-settings
+  run-cmd write-terminal-settings
+  run-cmd write-text-edit-settings
+  run-cmd write-photos-settings
+  run-cmd write-goole-chrome-settings
+  run-cmd kill-affected-apps
+
+  log-info "Note that some of these changes require a logout/restart to take effect"
+}
 
 ###############################################################################
 # General UI/UX                                                               #
 ###############################################################################
 
-# Set standby delay to 1.5 hours (default is 1 hour)
-sudo pmset -a standbydelay 5400
+write-ui-settings() {
+  # Set standby delay to 1.5 hours (default is 1 hour)
+  sudo pmset -a standbydelay 5400
 
-# Menu bar: hide unwanted items
-for domain in ~/Library/Preferences/ByHost/com.apple.systemuiserver.*; do
-  defaults write "${domain}" dontAutoLoad -array \
-    "/System/Library/CoreServices/Menu Extras/Bluetooth.menu" \
-    "/System/Library/CoreServices/Menu Extras/TimeMachine.menu" \
-    "/System/Library/CoreServices/Menu Extras/Volume.menu" \
-    "/System/Library/CoreServices/Menu Extras/User.menu"
-done
-defaults write com.apple.systemuiserver menuExtras -array \
-  "/System/Library/CoreServices/Menu Extras/AirPort.menu" \
-  "/System/Library/CoreServices/Menu Extras/Battery.menu" \
-  "/System/Library/CoreServices/Menu Extras/Clock.menu"
+  # Menu bar: hide unwanted items
+  for domain in ~/Library/Preferences/ByHost/com.apple.systemuiserver.*; do
+    defaults write "${domain}" dontAutoLoad -array \
+      "/System/Library/CoreServices/Menu Extras/Bluetooth.menu" \
+      "/System/Library/CoreServices/Menu Extras/TimeMachine.menu" \
+      "/System/Library/CoreServices/Menu Extras/Volume.menu" \
+      "/System/Library/CoreServices/Menu Extras/User.menu"
+  done
+  defaults write com.apple.systemuiserver menuExtras -array \
+    "/System/Library/CoreServices/Menu Extras/AirPort.menu" \
+    "/System/Library/CoreServices/Menu Extras/Battery.menu" \
+    "/System/Library/CoreServices/Menu Extras/Clock.menu"
 
-# Save to disk (not to iCloud) by default
-defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+  # Save to disk (not to iCloud) by default
+  defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
 
-# Disable automatic termination of inactive apps
-defaults write NSGlobalDomain NSDisableAutomaticTermination -bool true
+  # Disable automatic termination of inactive apps
+  defaults write NSGlobalDomain NSDisableAutomaticTermination -bool true
 
-# Reveal IP address, hostname, OS version, etc. when clicking the clock
-# in the login window
-sudo defaults write /Library/Preferences/com.apple.loginwindow AdminHostInfo HostName
+  # Reveal IP address, hostname, OS version, etc. when clicking the clock
+  # in the login window
+  sudo defaults write /Library/Preferences/com.apple.loginwindow AdminHostInfo HostName
 
-# Restart automatically if the computer freezes
-sudo systemsetup -setrestartfreeze on
+  # Restart automatically if the computer freezes
+  sudo systemsetup -setrestartfreeze on
+}
 
 ###############################################################################
 # Finder                                                                      #
 ###############################################################################
 
-# Disable the warning when changing a file extension
-defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+write-finder-settings() {
+  # Disable the warning when changing a file extension
+  defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
 
-# Enable spring loading for directories
-defaults write NSGlobalDomain com.apple.springing.enabled -bool true
+  # Enable spring loading for directories
+  defaults write NSGlobalDomain com.apple.springing.enabled -bool true
 
-# Avoid creating .DS_Store files on network volumes
-defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+  # Avoid creating .DS_Store files on network volumes
+  defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
 
-# Enable snap-to-grid for icons on the desktop
-/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
+  # Enable snap-to-grid for icons on the desktop
+  /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:arrangeBy grid" ~/Library/Preferences/com.apple.finder.plist
 
-# Arrange by kind in other icon views
-/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:arrangeBy kind" ~/Library/Preferences/com.apple.finder.plist
-/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:arrangeBy kind" ~/Library/Preferences/com.apple.finder.plist
+  # Arrange by kind in other icon views
+  /usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:arrangeBy kind" ~/Library/Preferences/com.apple.finder.plist
+  /usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:arrangeBy kind" ~/Library/Preferences/com.apple.finder.plist
 
-# Use icon view in all Finder windows by default
-# Four-letter codes for the other view modes: `Nlsv`, `clmv`, `Flwv`
-defaults write com.apple.finder FXPreferredViewStyle -string "icnv"
+  # Use icon view in all Finder windows by default
+  # Four-letter codes for the other view modes: `Nlsv`, `clmv`, `Flwv`
+  defaults write com.apple.finder FXPreferredViewStyle -string "icnv"
 
-# Show the ~/Library folder
-chflags nohidden ~/Library
+  # Show the ~/Library folder
+  chflags nohidden ~/Library
 
-# Show the /Volumes folder
-sudo chflags nohidden /Volumes
+  # Show the /Volumes folder
+  sudo chflags nohidden /Volumes
+}
 
 ###############################################################################
 # Dock, Dashboard, and hot corners                                            #
 ###############################################################################
 
-# Set the icon size of Dock items to 48 pixels
-defaults write com.apple.dock tilesize -int 48
+write-dock-settings() {
+  # Set the icon size of Dock items to 48 pixels
+  defaults write com.apple.dock tilesize -int 48
 
-# Show indicator lights for open applications in the Dock
-defaults write com.apple.dock show-process-indicators -bool true
+  # Show indicator lights for open applications in the Dock
+  defaults write com.apple.dock show-process-indicators -bool true
 
-# Automatically hide and show the Dock
-defaults write com.apple.dock autohide -bool false
+  # Automatically hide and show the Dock
+  defaults write com.apple.dock autohide -bool false
 
-# Make Dock icons of hidden applications translucent
-defaults write com.apple.dock showhidden -bool true
+  # Make Dock icons of hidden applications translucent
+  defaults write com.apple.dock showhidden -bool true
+}
 
 ###############################################################################
 # Mail                                                                        #
 ###############################################################################
 
-# Copy email addresses as `foo@example.com` instead of `Foo Bar <foo@example.com>` in Mail.app
-defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+write-mail-settings() {
+  # Copy email addresses as `foo@example.com` instead of `Foo Bar <foo@example.com>` in Mail.app
+  defaults write com.apple.mail AddressesIncludeNameOnPasteboard -bool false
+}
 
 ###############################################################################
 # Terminal                                                                    #
 ###############################################################################
 
-# Only use UTF-8 in Terminal.app
-defaults write com.apple.terminal StringEncodings -array 4
+write-terminal-settings() {
+  # Only use UTF-8 in Terminal.app
+  defaults write com.apple.terminal StringEncodings -array 4
 
-# Use a modified version of the Solarized Dark theme by default in Terminal.app
-osascript <<EOD
+  # Use a modified version of the Solarized Dark theme by default in Terminal.app
+  osascript <<EOD
 
 tell application "Terminal"
 
@@ -154,29 +187,35 @@ tell application "Terminal"
 end tell
 
 EOD
+}
 
 ###############################################################################
 # TextEdit                                                                    #
 ###############################################################################
 
-# Use plain text mode for new TextEdit documents
-defaults write com.apple.TextEdit RichText -int 0
-# Open and save files as UTF-8 in TextEdit
-defaults write com.apple.TextEdit PlainTextEncoding -int 4
-defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+write-text-edit-settings() {
+  # Use plain text mode for new TextEdit documents
+  defaults write com.apple.TextEdit RichText -int 0
+  # Open and save files as UTF-8 in TextEdit
+  defaults write com.apple.TextEdit PlainTextEncoding -int 4
+  defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+}
 
 ###############################################################################
 # Photos                                                                      #
 ###############################################################################
 
-# Prevent Photos from opening automatically when devices are plugged in
-defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
+write-photos-settings() {
+  # Prevent Photos from opening automatically when devices are plugged in
+  defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
+}
 
 ###############################################################################
 # Google Chrome & Google Chrome Canary                                        #
 ###############################################################################
 
-node <<EOD
+write-goole-chrome-settings() {
+  node <<EOD
 var path = '$HOME/Library/Application Support/Google/Chrome/Default/Preferences';
 var fs = require('fs');
 var prefs = JSON.parse(fs.readFileSync(path));
@@ -185,13 +224,19 @@ prefs.session = prefs.session || {};
 prefs.session.restore_on_startup = 1;
 fs.writeFileSync(path, JSON.stringify(prefs));
 EOD
+}
 
 ###############################################################################
 # Kill affected applications                                                  #
 ###############################################################################
 
-for app in "Address Book" "cfprefsd" "Dock" "Finder" "Google Chrome" \
-  "Google Chrome Canary" "Mail" "Photos" "SystemUIServer"; do
-  killall "${app}" &> /dev/null
-done
-echo "Done. Note that some of these changes require a logout/restart to take effect."
+kill-affected-apps() {
+  for app in "Address Book" "cfprefsd" "Dock" "Finder" "Google Chrome" \
+    "Google Chrome Canary" "Mail" "Photos" "SystemUIServer"; do
+    killall "${app}" &> /dev/null
+  done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  setup-main "$@"
+fi
