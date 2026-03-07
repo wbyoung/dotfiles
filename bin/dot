@@ -74,8 +74,16 @@ install-all() {
 }
 
 self-update() {
+  if [ -n "$_DOTFILES_SELFUPDATE_COMPLETE" ]; then
+    return
+  fi
+
   log-info "[self-update]"
   run-cmd "git pull origin -q --ff-only"
+
+  # in case anything within this script changed during the pull, re-exec the
+  # script (while skipping updating again).
+  _DOTFILES_SELFUPDATE_COMPLETE=1 exec "${BASH_SOURCE[0]}" "${ARGS[@]}"
 }
 
 install-zsh-config() {
