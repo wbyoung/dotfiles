@@ -16,7 +16,7 @@ write-settings() {
 
 install-packages() {
   is-config-set "vim-config" \
-    && run-cmd apk -q add vim
+    && run-cmd apk -q add neovim
 }
 
 if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
