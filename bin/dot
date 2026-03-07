@@ -38,6 +38,10 @@ dot-main() {
   store-config
 }
 
+interrupt-cleanup() {
+  exit 1
+}
+
 install-all() {
   self-update
   want-to-install "zsh config" && install-zsh-config
@@ -267,6 +271,7 @@ want-to-install() {
 }
 
 script-init() {
+  trap 'interrupt-cleanup' SIGINT
   load-config
   parse-options "$@"
 }
