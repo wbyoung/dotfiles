@@ -272,6 +272,9 @@ script-init() {
 }
 
 load-config() {
+  if ! [ -f "$CONFIG_FILE" ]
+    return
+  fi
   if [ -f "$CONFIG_FILE" ] && ! has-jq; then
     log-warning "no \`jq\` found, skipping loading of .dotfiles/config.json"
     return
