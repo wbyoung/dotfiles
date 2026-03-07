@@ -76,8 +76,8 @@ install-vim-config() {
 install-git-config() {
   log-info "[git]"
   install-files "." "git/*"
-  is-option-set "git-sshcmd" && run-cmd setup-git-sshcmd
-  is-option-set "git-gpgssh" && run-cmd setup-git-gpgssh
+  is-config-set "git-sshcmd" && run-cmd setup-git-sshcmd
+  is-config-set "git-gpgssh" && run-cmd setup-git-gpgssh
 }
 
 install-gist-commands() {
