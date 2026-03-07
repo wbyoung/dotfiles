@@ -16,7 +16,7 @@ if [ -t 1 ] && (
     && [ "$(tput colors)" -ge 8 ] \
   ) \
   || [ "$TERM" == *color* ] \
-  || [-n "$COLORTERM"] \
+  || [ -n "$COLORTERM" ] \
 ); then
     export CLICOLOR=true
 fi
