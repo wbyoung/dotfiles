@@ -136,6 +136,12 @@ run-alpine-setup() {
   alpine/setup "${ARGS[@]}"
 }
 
+run-osx-setup() {
+  log-info "[osx]"
+  log-detail "[exec] osx/setup"
+  osx/setup "${ARGS[@]}"
+}
+
 install-homebrew() {
   log-info "[homebrew]"
 
@@ -147,10 +153,8 @@ install-homebrew() {
   run-cmd brew install -q --no-quarantine grishka/grishka/neardrop
 }
 
-run-osx-setup() {
-  log-info "[osx]"
-  log-detail "[exec] osx/setup"
-  osx/setup "${ARGS[@]}"
+install-homebrew-via-curl() {
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 install-files() {
@@ -174,10 +178,6 @@ install-files() {
   for file in $@; do
     run-cmd link-dotfile "${file}" "${target_prefix}"
   done
-}
-
-install-homebrew-via-curl() {
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 link-dotfile() {
