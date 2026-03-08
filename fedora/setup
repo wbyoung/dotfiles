@@ -29,6 +29,7 @@ install-packages() {
   log-info "Requesting admin password prior to installing apps"
   run-cmd sudo -v
 
+  run-cmd install-gnome-extensions
   run-cmd install-devtools
   run-cmd install-vscode
   run-cmd install-docker
@@ -74,6 +75,15 @@ write-ptyxis-settings() {
   dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-9 "'<Alt>parenleft'"
   dconf write /org/gnome/Ptyxis/Shortcuts/reset "''"
   dconf write /org/gnome/Ptyxis/Shortcuts/reset-and-clear "'<Shift><Control>k'"
+}
+
+install-gnome-extensions() {
+  pip3 install --quiet --user --upgrade gnome-extensions-cli
+  gext install \
+    appindicatorsupport@rgcjonas.gmail.com \
+    background-logo@fedorahosted.org \
+    gTile@vibou \
+    nightthemeswitcher@romainvigier.fr
 }
 
 install-devtools() {
