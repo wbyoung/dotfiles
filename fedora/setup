@@ -30,10 +30,10 @@ install-packages() {
   run-cmd sudo -v
 
   run-cmd install-gnome-extensions
+  run-cmd install-brave
   run-cmd install-devtools
   run-cmd install-vscode
   run-cmd install-docker
-  run-cmd install-brave
 
   is-config-set "zsh-config" \
     && run-cmd install-zsh-plugin-dependencies
@@ -86,6 +86,13 @@ install-gnome-extensions() {
     nightthemeswitcher@romainvigier.fr
 }
 
+install-brave() {
+  sudo dnf -yq config-manager addrepo 2> /dev/null \
+    --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    brave-browser
+}
+
 install-devtools() {
   sudo dnf --assumeyes --quiet install 2> /dev/null \
     gettext \
@@ -133,13 +140,6 @@ install-docker() {
   sudo systemctl enable --now docker
   sudo usermod -aG docker $USER
   newgrp docker
-}
-
-install-brave() {
-  sudo dnf -yq config-manager addrepo 2> /dev/null \
-    --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
-  sudo dnf --assumeyes --quiet install 2> /dev/null \
-    brave-browser
 }
 
 install-gh() {
