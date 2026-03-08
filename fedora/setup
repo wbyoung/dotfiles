@@ -126,6 +126,12 @@ install-vscode() {
 }
 
 install-docker() {
+  local has_docker_group=no
+
+  if getent group docker > /dev/null; then
+    has_docker_group=yes
+  fi
+
   sudo dnf -yq config-manager addrepo 2> /dev/null \
     --from-repofile https://download.docker.com/linux/fedora/docker-ce.repo
   sudo dnf --assumeyes --quiet install 2> /dev/null \
@@ -139,7 +145,13 @@ install-docker() {
     | sudo tee /etc/docker/daemon.json > /dev/null
   sudo systemctl enable --now docker
   sudo usermod -aG docker $USER
-  newgrp docker
+
+  # note: the install instructions suggest to run `newgrp docker` here, but that
+  # creates a new subshell, so we just need to warn if the user should take
+  # action.
+  if [ "$has_docker_group" = "no" ]; then
+    log-warning "docker group added; re-login for permissions to take effect"
+  fi
 }
 
 install-gh() {
