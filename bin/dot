@@ -414,7 +414,7 @@ parse-options() {
         ;;
       *)
         log-error "invalid argument: ${1}"
-        usage
+        usage >&2
         exit 1
         ;;
     esac
@@ -444,7 +444,6 @@ usage() {
   echo "	--[no-]zsh-config"
   echo "	--help"
 }
-
 
 if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
   dot-main "$@"
