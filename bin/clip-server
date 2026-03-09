@@ -3,46 +3,62 @@
 
 cd "$(dirname "$0")/.."
 
+declare -A OPTIONS
+declare COMMAND
 declare NETCAT_TEMPFILE
+declare _notify
+declare _copy
 
-[[ -f /etc/os-release ]] && source /etc/os-release
-
-if [[ "$OSTYPE" == darwin* ]]; then
-  _notify() {
-    terminal-notifier \
-      -message "$1" \
-      -title "Remote Copy from $2" \
-      -sender com.apple.TextEdit \
-      -group localhost.terminal.remote-pbcopy
-  }
-  _copy() {
-    pbcopy <<< "$1"
-  }
-elif [[ "$ID" == "fedora" ]]; then
-  _notify() {
-    last_notify_id=$(
-      notify-send "Remote Copy from $2" "$1" \
-        --transient \
-        --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg \
-        --app-name "clip-server" \
-        --replace-id "${last_notify_id:-0}" \
-        --print-id
-    )
-  }
-  _copy() {
-    wl-copy <<< "$1"
-    wl-copy -p <<< "$1"
-  }
+if [ -t 1 ] && (
+  (
+  [ -x "$(command -v tput)" ] \
+    && [ -n "$(tput colors)" ] \
+    && [ "$(tput colors)" -ge 8 ] \
+  ) \
+  || [ "$TERM" == *color* ] \
+  || [ -n "$COLORTERM" ] \
+); then
+    export CLICOLOR=true
 fi
 
-if [[ $(type -t _copy) != function ]]; then
-  echo "Refusing to run on this platform." 1>&2
-  exit 1
-fi
+{
+  [ "${CLICOLOR:-}" = "true" ] || [ "${CLICOLOR:-}" = "1" ] && \
+    tty_only() { printf "${1}"; } || \
+    tty_only() { printf ""; }
 
-cleanup() {
-  rm $NETCAT_TEMPFILE
-  kill -TERM -- "-$$"
+  cli_color() { tty_only "\033[0;${1}m"; }
+
+  RED=$(cli_color "31")
+  GREEN=$(cli_color "32")
+  YELLOW=$(cli_color "33")
+  BLUE=$(cli_color "34")
+  MAGENTA=$(cli_color "35")
+  CYAN=$(cli_color "36")
+  BOLD=$(tty_only "\033[1m")
+  RESET=$(tty_only "\033[0m")
+  HIDE_CURSOR=$(tty_only "\x1b[?25l")
+  SHOW_CURSOR=$(tty_only "\x1b[?25h")
+  CURSOR_UP_ONE_LINE=$(tty_only "\x1b[1A")
+  CURSOR_DOWN_ONE_LINE=$(tty_only "\x1b[1B")
+  CLEAR_CURRENT_LINE=$(tty_only "\x1b[2K")
+  CLEAR_LAST_LINE=$(tty_only "${CURSOR_UP_ONE_LINE}${CLEAR_CURRENT_LINE}")
+
+  unset -f tty_only;
+  unset -f cli_color;
+}
+
+clip-server-main() {
+  parse-command "$@" && shift
+  parse-options "$@"
+  define-platform-helpers
+  $COMMAND
+}
+
+exit-cleanup() {
+  log-debug "Received signal $1; exiting"
+  rm -f $NETCAT_TEMPFILE
+  trap - EXIT
+  exit
 }
 
 run() {
@@ -54,8 +70,10 @@ run() {
   local last_remote_ip
   local last_notify_seconds
 
-  echo "Running clip server..."
-  trap 'cleanup' EXIT
+  log-info "Running clip server..."
+  trap 'exit-cleanup INT' INT
+  trap 'exit-cleanup TERM' TERM
+  trap 'exit-cleanup EXIT' EXIT
 
   # store the PID for this instance. note that the goal is to store the PID that
   # will appear in the output of `ps` rather than storing the PGID which is what
@@ -71,7 +89,7 @@ run() {
   echo $pid > clip-server.pid
 
   NETCAT_TEMPFILE="$(mktemp /tmp/clip-server-nc.XXXXXX)"
-  notify_delay=300
+  notify_delay="${OPTIONS["grace_period"]:-300}"
   last_notify_seconds=0
 
   while [ true ]; do
@@ -81,9 +99,13 @@ run() {
     remote_hostname=$(host "$remote_ip" | head -n 1 | awk '{print $NF}' | sed 's/\.$//')
     notify=false
 
+    log-debug "Received message from ${remote_ip}; ${remote_hostname}"
+
     if [ "$remote_ip" != "$last_remote_ip" ]; then
+      log-debug "Will notify since remote_ip has changed"
       notify=true
     elif [ $((SECONDS - last_notify_seconds)) -gt "$notify_delay" ]; then
+      log-debug "Will notify since $((SECONDS - last_notify_seconds)) seconds have elapsed"
       notify=true
     fi
 
@@ -99,24 +121,28 @@ run() {
 }
 
 start() {
-  if lsof -i tcp:2224 > /dev/null; then
-    echo "Something else is listening on localhost:2224; cannot proceed" 1>&2
-    exit 1
-  fi
-
   if daemon-running; then
-    echo "Already running; cannot proceed" 1>&2
+    log-warning "Already running; cannot proceed" 1>&2
     exit 1
   fi
 
-  (run &)
+  if lsof -i tcp:2224 > /dev/null; then
+    log-error "Something else is listening on localhost:2224; cannot proceed" 1>&2
+    exit 1
+  fi
 
-  # wait for port to come up before exiting
-  for run in {1..10}; do
-    if lsof -i tcp:2224 > /dev/null; then
-      break
-    fi
-  done
+  if [ "${OPTIONS["foreground"]:-no}" = "yes" ]; then
+    run
+  else
+    (run &)
+
+    # wait for port to come up before exiting
+    for run in {1..10}; do
+      if lsof -i tcp:2224 > /dev/null; then
+        break
+      fi
+    done
+  fi
 }
 
 stop() {
@@ -128,7 +154,7 @@ stop() {
     kill -TERM -- "-$pgid"
     rm clip-server.pid
   else
-    echo "Not running; nothing to do" 1>&2
+    log-warning "Not running; nothing to do" 1>&2
     exit 1
   fi
 }
@@ -166,11 +192,121 @@ daemon-pgid() {
   echo "$pgid"
 }
 
+define-platform-helpers() {
+  local os_type
+  local os_id
+
+  os_type="$([[ -f /etc/os-release ]] && source /etc/os-release && echo "$OSTYPE")"
+  os_id="$([[ -f /etc/os-release ]] && source /etc/os-release && echo "$ID")"
+
+  if [[ "$os_type" == darwin* ]]; then
+    _notify() {
+      terminal-notifier \
+        -message "$1" \
+        -title "Remote Copy from $2" \
+        -sender com.apple.TextEdit \
+        -group localhost.terminal.remote-pbcopy
+    }
+    _copy() {
+      pbcopy <<< "$1"
+    }
+  elif [[ "$os_id" == "fedora" ]]; then
+    _notify() {
+      last_notify_id=$(
+        notify-send "Remote Copy from $2" "$1" \
+          --transient \
+          --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg \
+          --app-name "clip-server" \
+          --replace-id "${last_notify_id:-0}" \
+          --print-id
+      )
+    }
+    _copy() {
+      wl-copy <<< "$1"
+      wl-copy -p <<< "$1"
+    }
+  fi
+
+  if [[ $(type -t _copy) != function ]]; then
+    log-error "Refusing to run on this platform." 1>&2
+    exit 1
+  fi
+}
+
+log-debug() {
+  [ "${OPTIONS["verbosity"]:-0}" -ge "2" ] \
+    && printf "${MAGENTA}${*}${RESET}\n" >&2
+}
+
+log-info() {
+  printf "${CYAN}${*}${RESET}\n"
+}
+
+log-warning () {
+  printf "${YELLOW}${*}${RESET}\n" 1>&2
+}
+
+log-error () {
+  printf "${RED}${*}${RESET}\n" 1>&2
+}
+
+parse-command() {
+  case "${1}" in
+    start)
+      COMMAND=start
+      shift
+      ;;
+    stop)
+      COMMAND=stop
+      shift
+      ;;
+    *)
+      return 1
+  esac
+}
+
+parse-options() {
+  while [ $# -ne 0 ]; do
+    case "${1}" in
+      -f|--foreground)
+        OPTIONS["foreground"]="yes"
+        shift
+        ;;
+      -d|--grace-period)
+        OPTIONS["grace_period"]="$2"
+        shift 2
+        ;;
+      -v|--verbose)
+        OPTIONS["verbosity"]="2"
+
+        if [ "$(( "$2" ))" = "$2" ]; then
+          OPTIONS["verbosity"]="$(( "$2" ))"
+          shift
+        fi
+
+        shift
+        ;;
+      -h|--help)
+        help
+        exit 0
+        ;;
+      *)
+        log-error "invalid argument: ${1}"
+        usage >&2
+        exit 1
+        ;;
+    esac
+  done
+}
+
 help() {
-  echo "Best used with an alias for ssh to start & stop the server."
-  echo ""
+  usage
+
+  echo
   cat <<EOF
-Add the following to ~/.ssh/config:
+This tool is designed to be used with an alias for ssh to start & stop the
+server. The alias definition can be found in \`bzsh/ssh_clipserver.zsh\`. Add the
+following to \`~/.ssh/config\` to use when accessing a remote host:
 
 Host myhost
   HostName fqdn-or-ip
@@ -179,20 +315,18 @@ Host myhost
 EOF
 }
 
-case $1 in
-  start)
-    start
-    ;;
-  stop)
-    stop
-    ;;
-  help)
-    help
-    ;;
-  ?)
-    echo "Invalid command $1"
-    exit 1
-    ;;
-  *)
-    echo "usage: clip-server [start|stop|help]"
-esac
+usage() {
+  echo "Usage:"
+  echo "	clip-server <start|stop> [options]"
+  echo
+  echo "Options:"
+  echo "	-d, --grace-period      Grace period in seconds between notifications"
+  echo "	                        (only if received from the same host)"
+  echo "	-f, --foreground        Run in the foreground"
+  echo "	-v, --verbose [level]   Set output verbosity"
+  echo "	--help"
+}
+
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
+  clip-server-main "$@"
+fi
