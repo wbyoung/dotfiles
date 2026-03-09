@@ -1,4 +1,5 @@
 #/usr/bin/env bash
+# vim: set ft=bash :
 
 cd "$(dirname "$0")/.."
 
@@ -51,6 +52,39 @@ run() {
   done
 }
 
+instance-pid() {
+  ! [[ -f clip-server.pid ]] \
+    && return 1
+
+  cat clip-server.pid
+}
+
+instance-pgid() {
+  local pid
+  local pgid
+
+  pid=$(instance-pid)
+
+  [ $? -ne 0 ] \
+    && return 1
+
+  pgid=$(ps -o pgid= $pid)
+
+  [ $? -ne 0 ] \
+    && return 1
+
+  pgid="${pgid##*[[:space:]]}"
+  pgid="${pgid%%*[[:space:]]}"
+
+  echo "$pgid"
+}
+
+is-running() {
+  ! instance-pgid > /dev/null \
+    && return 1
+  return 0
+}
+
 
 start() {
   if lsof -i tcp:2224 > /dev/null; then
@@ -58,7 +92,7 @@ start() {
     exit 1
   fi
 
-  if [[ -f clip-server.pid ]]; then
+  if is-running; then
     echo "Already running; cannot proceed" 1>&2
     exit 1
   fi
@@ -74,11 +108,11 @@ start() {
 }
 
 stop() {
-  if [[ -f clip-server.pid ]]; then
-    pid=$(cat clip-server.pid)
-    pgid=$(ps -o pgid= $pid)
-    pgid="${pgid##*[[:space:]]}"
-    pgid="${pgid%%*[[:space:]]}"
+  local pgid
+
+  pgid="$(instance-pgid)"
+
+  if [ -n "$pgid" ]; then
     kill -TERM -- "-$pgid"
     rm clip-server.pid
   else
