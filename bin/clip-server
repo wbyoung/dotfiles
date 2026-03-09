@@ -41,7 +41,16 @@ fi
 run() {
   echo "Running clip server..."
 
-  # store pid
+  # store the PID for this instance. note that the goal is to store the PID that
+  # will appear in the output of `ps` rather than storing the PGID which is what
+  # will actually be used during shutdown of the daemon (this just to keep
+  # things logical so that during debugging, looking at the PID file will have a
+  # value that appears in `ps`). the value of `$$` is the PID of the shell that
+  # started this script and will be the same as the PGID since it becomes the
+  # process group leader. the actual value desired could be obtained from
+  # `$BASHPID`, but that requires bash 4 (which macOS doesn't have & likely
+  # never will). this is a quick workaround to get the actual PID by getting the
+  # parent PID, `$PPID` from a new child process.
   pid=$(exec sh -c 'echo "$PPID"')
   echo $pid > clip-server.pid
 
@@ -52,47 +61,13 @@ run() {
   done
 }
 
-instance-pid() {
-  ! [[ -f clip-server.pid ]] \
-    && return 1
-
-  cat clip-server.pid
-}
-
-instance-pgid() {
-  local pid
-  local pgid
-
-  pid=$(instance-pid)
-
-  [ $? -ne 0 ] \
-    && return 1
-
-  pgid=$(ps -o pgid= $pid)
-
-  [ $? -ne 0 ] \
-    && return 1
-
-  pgid="${pgid##*[[:space:]]}"
-  pgid="${pgid%%*[[:space:]]}"
-
-  echo "$pgid"
-}
-
-is-running() {
-  ! instance-pgid > /dev/null \
-    && return 1
-  return 0
-}
-
-
 start() {
   if lsof -i tcp:2224 > /dev/null; then
     echo "Something else is listening on localhost:2224; cannot proceed" 1>&2
     exit 1
   fi
 
-  if is-running; then
+  if daemon-running; then
     echo "Already running; cannot proceed" 1>&2
     exit 1
   fi
@@ -110,7 +85,7 @@ start() {
 stop() {
   local pgid
 
-  pgid="$(instance-pgid)"
+  pgid="$(daemon-pgid)"
 
   if [ -n "$pgid" ]; then
     kill -TERM -- "-$pgid"
@@ -119,6 +94,39 @@ stop() {
     echo "Not running; nothing to do" 1>&2
     exit 1
   fi
+}
+
+daemon-running() {
+  ! daemon-pgid > /dev/null \
+    && return 1
+  return 0
+}
+
+daemon-pid() {
+  ! [[ -f clip-server.pid ]] \
+    && return 1
+
+  cat clip-server.pid
+}
+
+daemon-pgid() {
+  local pid
+  local pgid
+
+  pid=$(daemon-pid)
+
+  [ $? -ne 0 ] \
+    && return 1
+
+  pgid=$(ps -o pgid= $pid)
+
+  [ $? -ne 0 ] \
+    && return 1
+
+  pgid="${pgid##*[[:space:]]}"
+  pgid="${pgid%%*[[:space:]]}"
+
+  echo "$pgid"
 }
 
 help() {
