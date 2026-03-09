@@ -22,6 +22,7 @@ endif
 Plug 'mattn/gist-vim'
 Plug 'tpope/vim-fugitive'
 Plug 'tpope/vim-git'
+Plug 'airblade/vim-gitgutter'
 
 " Appearance
 Plug 'chrisbra/color_highlight'
