@@ -3,13 +3,15 @@
 
 cd "$(dirname "$0")/.."
 
+declare NETCAT_TEMPFILE
+
 [[ -f /etc/os-release ]] && source /etc/os-release
 
 if [[ "$OSTYPE" == darwin* ]]; then
   _notify() {
     terminal-notifier \
       -message "$1" \
-      -title 'Remote Copy' \
+      -title "Remote Copy from $2" \
       -sender com.apple.TextEdit \
       -group localhost.terminal.remote-pbcopy
   }
@@ -19,7 +21,7 @@ if [[ "$OSTYPE" == darwin* ]]; then
 elif [[ "$ID" == "fedora" ]]; then
   _notify() {
     last_notify_id=$(
-      notify-send "Remote Copy" "$1" \
+      notify-send "Remote Copy from $2" "$1" \
         --transient \
         --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg \
         --app-name "clip-server" \
@@ -38,8 +40,22 @@ if [[ $(type -t _copy) != function ]]; then
   exit 1
 fi
 
+cleanup() {
+  rm $NETCAT_TEMPFILE
+  kill -TERM -- "-$$"
+}
+
 run() {
+  local pid
+  local remote_ip
+  local remote_hostname
+  local notify
+  local notify_delay
+  local last_remote_ip
+  local last_notify_seconds
+
   echo "Running clip server..."
+  trap 'cleanup' EXIT
 
   # store the PID for this instance. note that the goal is to store the PID that
   # will appear in the output of `ps` rather than storing the PGID which is what
@@ -54,10 +70,31 @@ run() {
   pid=$(exec sh -c 'echo "$PPID"')
   echo $pid > clip-server.pid
 
+  NETCAT_TEMPFILE="$(mktemp /tmp/clip-server-nc.XXXXXX)"
+  notify_delay=300
+  last_notify_seconds=0
+
   while [ true ]; do
-    content=$(nc -l 2224)
-    _notify "$content"
+    content=$(nc -v -l 2224 2> "$NETCAT_TEMPFILE")
+
+    remote_ip=$(grep -oP "(?<=Connection from )[\d\.]*\d+" "$NETCAT_TEMPFILE" | head -n 1)
+    remote_hostname=$(host "$remote_ip" | head -n 1 | awk '{print $NF}' | sed 's/\.$//')
+    notify=false
+
+    if [ "$remote_ip" != "$last_remote_ip" ]; then
+      notify=true
+    elif [ $((SECONDS - last_notify_seconds)) -gt "$notify_delay" ]; then
+      notify=true
+    fi
+
+    if [ "$notify" = "true" ]; then
+      _notify "$content" "${remote_hostname:-unknown}"
+      last_notify_seconds="$SECONDS"
+    fi
+
     _copy "$content"
+
+    last_remote_ip="$remote_ip"
   done
 }
 
