@@ -56,6 +56,11 @@ clip-server-main() {
   $COMMAND
 }
 
+exit-shutdown() {
+  log-debug "Received signal $1; shutting down"
+  stop 2> /dev/null
+}
+
 exit-cleanup() {
   log-debug "Received signal $1; exiting"
   rm -f "$NETCAT_TEMPFILE"
@@ -76,7 +81,7 @@ run() {
   local last_notify_seconds
 
   log-info "Running clip server..."
-  trap 'exit-cleanup INT' INT
+  trap 'exit-shutdown INT' INT
   trap 'exit-cleanup TERM' TERM
   trap 'exit-cleanup EXIT' EXIT
 
