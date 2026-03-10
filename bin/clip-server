@@ -98,7 +98,7 @@ run() {
   last_notify_seconds=0
 
   while [ true ]; do
-    content=$(nc -v -l 2224 2> "$NETCAT_TEMPFILE")
+    IFS= read -r -d '' content < <(nc -v -l 2224 2> "$NETCAT_TEMPFILE")
     headers=$(extract-message-headers <<< "$content")
 
     [ -n "$headers" ] \
@@ -259,8 +259,8 @@ define-platform-helpers() {
 }
 
 extract-message-headers() {
-  cat | awk 'BEGIN{RS=""} \
-NR == 1 && $0 ~ /(^!clip-server:[^\n]*(\n|$))+$/ { headers=$0 } \
+  cat | awk 'BEGIN{RS="\n\n"} \
+NR == 1 && $0 ~ /(^!clip-server:[^\n]*(\n|$))+$/ { headers=$0; RS="\n" } \
 NR == 2 { print headers; exit }'
 }
 
