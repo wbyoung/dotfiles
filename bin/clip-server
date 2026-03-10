@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 declare -A OPTIONS
 declare COMMAND
 declare NETCAT_TEMPFILE
+declare LAST_NOTIFY_ID
 declare _notify
 declare _copy
 
@@ -56,18 +57,21 @@ clip-server-main() {
 
 exit-cleanup() {
   log-debug "Received signal $1; exiting"
-  rm -f $NETCAT_TEMPFILE
+  rm -f "$NETCAT_TEMPFILE"
   trap - EXIT
   exit
 }
 
 run() {
   local pid
+  local content
+  local headers
   local remote_ip
   local remote_hostname
+  local remote_id
   local notify
   local notify_delay
-  local last_remote_ip
+  local last_remote_id
   local last_notify_seconds
 
   log-info "Running clip server..."
@@ -94,15 +98,35 @@ run() {
 
   while [ true ]; do
     content=$(nc -v -l 2224 2> "$NETCAT_TEMPFILE")
+    headers=$(extract-message-headers <<< "$content")
 
+    [ -n "$headers" ] \
+      && content=$(sed -e '1,/^$/d' <<< "$content")
+
+    notify=false
+    remote_hostname="unknown"
     remote_ip=$(grep -oP "(?<=Connection from )[\d\.]*\d+" "$NETCAT_TEMPFILE" | head -n 1)
     remote_hostname=$(host "$remote_ip" | head -n 1 | awk '{print $NF}' | sed 's/\.$//')
-    notify=false
 
-    log-debug "Received message from ${remote_ip}; ${remote_hostname}"
+    if [ "$remote_ip" = "127.0.0.1" ] || [ "$remote_ip" = "::1" ]; then
+      remote_id=$(
+        grep -oP "(?<=\!clip-server: id=)[\w_]+" <<< "$headers" |
+        head -n 1
+      )
+      remote_id="${remote_id:-${remote_hostname}}"
+    elif [ -n "$remote_hostname" ]; then
+      remote_id="$remote_hostname"
+    else
+      remote_id="$remote_ip"
+    fi
 
-    if [ "$remote_ip" != "$last_remote_ip" ]; then
-      log-debug "Will notify since remote_ip has changed"
+    log-debug "Received message from ${remote_id:-unknown}; ${remote_hostname:-${remote_ip:-unknown}}"
+
+    if [ -z "$remote_id" ]; then
+      log-debug "Will notify since remote_id was not provided"
+      notify=true
+    elif [ "$remote_id" != "$last_remote_id" ]; then
+      log-debug "Will notify since remote_id has changed"
       notify=true
     elif [ $((SECONDS - last_notify_seconds)) -gt "$notify_delay" ]; then
       log-debug "Will notify since $((SECONDS - last_notify_seconds)) seconds have elapsed"
@@ -110,13 +134,13 @@ run() {
     fi
 
     if [ "$notify" = "true" ]; then
-      _notify "$content" "${remote_hostname:-unknown}"
+      _notify "$content" "${remote_id:-unknown}"
       last_notify_seconds="$SECONDS"
     fi
 
     _copy "$content"
 
-    last_remote_ip="$remote_ip"
+    last_remote_id="$remote_id"
   done
 }
 
@@ -203,7 +227,7 @@ define-platform-helpers() {
     _notify() {
       terminal-notifier \
         -message "$1" \
-        -title "Remote Copy from $2" \
+        -title "Remote copy from $2" \
         -sender com.apple.TextEdit \
         -group localhost.terminal.remote-pbcopy
     }
@@ -212,12 +236,12 @@ define-platform-helpers() {
     }
   elif [[ "$os_id" == "fedora" ]]; then
     _notify() {
-      last_notify_id=$(
-        notify-send "Remote Copy from $2" "$1" \
+      LAST_NOTIFY_ID=$(
+        notify-send "Remote copy from $2" "$1" \
           --transient \
           --icon /usr/share/icons/Adwaita/symbolic/actions/edit-copy-symbolic.svg \
           --app-name "clip-server" \
-          --replace-id "${last_notify_id:-0}" \
+          --replace-id "${LAST_NOTIFY_ID:-0}" \
           --print-id
       )
     }
@@ -231,6 +255,12 @@ define-platform-helpers() {
     log-error "Refusing to run on this platform." 1>&2
     exit 1
   fi
+}
+
+extract-message-headers() {
+  cat | awk 'BEGIN{RS=""} \
+NR == 1 && $0 ~ /(^!clip-server:[^\n]*(\n|$))+$/ { headers=$0 } \
+NR == 2 { print headers; exit }'
 }
 
 log-debug() {
