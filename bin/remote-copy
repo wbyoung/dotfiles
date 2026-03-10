@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# vim: set ft=bash :
+
+cd "$(dirname "$0")/.."
+
+if [ -t 1 ] && (
+  (
+  [ -x "$(command -v tput)" ] \
+    && [ -n "$(tput colors)" ] \
+    && [ "$(tput colors)" -ge 8 ] \
+  ) \
+  || [ "$TERM" == *color* ] \
+  || [ -n "$COLORTERM" ] \
+); then
+    export CLICOLOR=true
+fi
+
+{
+  [ "${CLICOLOR:-}" = "true" ] || [ "${CLICOLOR:-}" = "1" ] && \
+    tty_only() { printf "${1}"; } || \
+    tty_only() { printf ""; }
+
+  cli_color() { tty_only "\033[0;${1}m"; }
+
+  RED=$(cli_color "31")
+  GREEN=$(cli_color "32")
+  YELLOW=$(cli_color "33")
+  BLUE=$(cli_color "34")
+  MAGENTA=$(cli_color "35")
+  CYAN=$(cli_color "36")
+  BOLD=$(tty_only "\033[1m")
+  RESET=$(tty_only "\033[0m")
+  HIDE_CURSOR=$(tty_only "\x1b[?25l")
+  SHOW_CURSOR=$(tty_only "\x1b[?25h")
+  CURSOR_UP_ONE_LINE=$(tty_only "\x1b[1A")
+  CURSOR_DOWN_ONE_LINE=$(tty_only "\x1b[1B")
+  CLEAR_CURRENT_LINE=$(tty_only "\x1b[2K")
+  CLEAR_LAST_LINE=$(tty_only "${CURSOR_UP_ONE_LINE}${CLEAR_CURRENT_LINE}")
+
+  unset -f tty_only;
+  unset -f cli_color;
+}
+
+remote-copy-main() {
+  local tempfile
+  local host_id
+
+  if [ -x "$(command -v ha)" ]; then
+    host_id="$(ha host info | awk '/^hostname:/ { print $2 }')"
+  else
+    host_id="$(hostname)"
+  fi
+
+
+  tempfile="$(mktemp /tmp/remote-copy.XXXXXX)"
+  trap "rm -f $tempfile" EXIT
+
+  nc 127.0.0.1 2224 2> "$tempfile" <<EOF
+!clip-server: id=$host_id
+
+$(cat)
+EOF
+
+  if [ "$?" -ne "0" ]; then
+    log-error "Failed to copy: $(cat "$tempfile")"
+  fi
+}
+
+log-error () {
+  printf "${RED}${*}${RESET}\n" 1>&2
+}
+
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
+  remote-copy-main "$@"
+fi

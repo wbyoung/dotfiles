@@ -2,7 +2,7 @@
 if (!empty($SSH_CLIENT) || !empty($SSH_TTY))
   augroup remote_clipboard
     autocmd!
-    autocmd TextYankPost * silent! call system('nc localhost 2224', @")
+    autocmd TextYankPost * silent! call system('remote-copy', @")
   augroup END
 endif
 

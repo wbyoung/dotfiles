@@ -7,6 +7,7 @@ declare -A OPTIONS
 declare COMMAND
 declare NETCAT_TEMPFILE
 declare LAST_NOTIFY_ID
+declare LOG_DESTINATION
 declare _notify
 declare _copy
 
@@ -110,7 +111,7 @@ run() {
 
     if [ "$remote_ip" = "127.0.0.1" ] || [ "$remote_ip" = "::1" ]; then
       remote_id=$(
-        grep -oP "(?<=\!clip-server: id=)[\w_]+" <<< "$headers" |
+        grep -oP "(?<=\!clip-server: id=)[\w_-]+" <<< "$headers" |
         head -n 1
       )
       remote_id="${remote_id:-${remote_hostname}}"
@@ -158,7 +159,7 @@ start() {
   if [ "${OPTIONS["foreground"]:-no}" = "yes" ]; then
     run
   else
-    (run &)
+    (LOG_DESTINATION=logger run &)
 
     # wait for port to come up before exiting
     for run in {1..10}; do
@@ -264,19 +265,35 @@ NR == 2 { print headers; exit }'
 }
 
 log-debug() {
+  [ "$LOG_DESTINATION" = "logger" ] \
+    && logger -t clip-server "debug: ${*}" \
+    && return 0
+
   [ "${OPTIONS["verbosity"]:-0}" -ge "2" ] \
     && printf "${MAGENTA}${*}${RESET}\n" >&2
 }
 
 log-info() {
+  [ "$LOG_DESTINATION" = "logger" ] \
+    && logger -t clip-server "info: ${*}" \
+    && return 0
+
   printf "${CYAN}${*}${RESET}\n"
 }
 
 log-warning () {
+  [ "$LOG_DESTINATION" = "logger" ] \
+    && logger -t clip-server "warning: ${*}" \
+    && return 0
+
   printf "${YELLOW}${*}${RESET}\n" 1>&2
 }
 
 log-error () {
+  [ "$LOG_DESTINATION" = "logger" ] \
+    && logger -t clip-server "error: ${*}" \
+    && return 0
+
   printf "${RED}${*}${RESET}\n" 1>&2
 }
 
@@ -304,6 +321,12 @@ parse-options() {
         ;;
       -d|--grace-period)
         OPTIONS["grace_period"]="$2"
+
+        if [ -n "$2" ] || [ "$(( "$2" ))" != "$2" ]; then
+          usage
+          exit 1
+        fi
+
         shift 2
         ;;
       -v|--verbose)
