@@ -4,6 +4,9 @@ set hlsearch        " Highlight searches by default
 set ignorecase      " Ignore case when searching...
 set smartcase       " ...Unless we type a capital
 
-"Use the silver searcher for lightning fast Gsearch command
-set grepprg=git\ grep
+if executable('rg')
+    set grepprg=rg\ --vimgrep\ --smart-case
+    set grepformat=%f:%l:%c:%m
+endif
+
 let g:grep_cmd_opts = '--line-number'
