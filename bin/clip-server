@@ -251,10 +251,16 @@ define-platform-helpers() {
           --print-id
       )
     }
-    _copy() {
-      wl-copy <<< "$1"
-      wl-copy -p <<< "$1"
-    }
+    if [ -x "$(command -v gpaste-client)" ]; then
+      _copy() {
+        gpaste-client add <<< "$1"
+      }
+    else
+      _copy() {
+        wl-copy <<< "$1"
+        wl-copy -p <<< "$1"
+      }
+    fi
   fi
 
   if [[ $(type -t _copy) != function ]]; then

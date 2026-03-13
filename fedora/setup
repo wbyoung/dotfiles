@@ -88,12 +88,39 @@ write-ptyxis-settings() {
 }
 
 install-gnome-extensions() {
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    gpaste \
+    gpaste-ui \
+    gnome-shell-extension-gpaste
+
+  # these extensions are installed via dnf, so they don't need to be installed
+  # via `gext`, but do need to be enabled.
+  gnome-extensions enable \
+    GPaste@gnome-shell-extensions.gnome.org
+
   pip3 install --quiet --user --upgrade gnome-extensions-cli
   gext install \
     appindicatorsupport@rgcjonas.gmail.com \
     background-logo@fedorahosted.org \
     gTile@vibou \
     nightthemeswitcher@romainvigier.fr
+
+  # install order impacts the order in which extension icons appear in the top
+  # bar--the first one is the right most icon.
+  reorder-gnome-extensions \
+    GPaste@gnome-shell-extensions.gnome.org \
+    appindicatorsupport@rgcjonas.gmail.com \
+    gTile@vibou
+}
+
+reorder-gnome-extensions() {
+  for extension in "$@"; do
+    gnome-extensions disable "${extension}"
+  done
+
+  for extension in "$@"; do
+    gnome-extensions enable "${extension}"
+  done
 }
 
 install-brave() {
