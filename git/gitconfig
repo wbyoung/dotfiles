@@ -15,7 +15,7 @@
     branch-out = log @{upstream}..HEAD --decorate --oneline
     fetch-truth = "!f() { git fetch origin ${1-master}:${1-master}; };f"
 [core]
-    editor = vim
+    editor = vim # likely overridden by GIT_EDITOR
     excludesfile = ~/.gitignore_global
 [diff]
     renames = true
