@@ -100,7 +100,7 @@ install-vim-config() {
 install-git-config() {
   log-info "[git]"
   install-dotfiles "." "git/*"
-  install-dotfiles ".config/gh" "gh/*"
+  install-dotfiles ".config/gh/" "gh/*"
   is-config-set "git-sshcmd" && run-cmd setup-git-sshcmd
   is-config-set "git-gpgssh" && run-cmd setup-git-gpgssh
 }
