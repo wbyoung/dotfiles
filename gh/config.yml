@@ -1,0 +1,27 @@
+version: 1
+
+color_labels: enabled
+spinner: enabled
+
+aliases:
+  co: pr checkout
+  cpr: |
+    !set -e
+    git push -u origin HEAD
+    gh pr create --fill
+    gh pr view --web
+
+    if [ -x ./node_modules/.bin/prettier ]; then
+      git show -s --format=%b HEAD \
+        | ./node_modules/.bin/prettier --parser markdown --prose-wrap never \
+        | wl-copy
+    fi
+  next: |
+    !set -e
+    git fetch
+    git remote prune origin
+    git co -b "${1:-next}" origin/main
+    local merged=$(git branch --merged origin/main | grep -Ev "^\*")
+    if [ -n "$merged" ]; then
+      git branch -D $merged;
+    fi
