@@ -36,6 +36,7 @@ install-packages() {
   run-cmd install-vscode
   run-cmd install-docker
   run-cmd install-podman
+  run-cmd install-kind
 
   is-config-set "zsh-config" \
     && run-cmd install-zsh-plugin-dependencies
@@ -193,6 +194,16 @@ EOF
 fs.inotify.max_user_instances = 8192
 fs.inotify.max_user_watches = 524288
 EOF
+}
+
+install-kind() {
+  curl --silent -Lo ./kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+  if echo "aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d  kind" | shasum -a 256 -c -; then
+    chmod +x ./kind
+    sudo mv ./kind /usr/local/bin/kind
+  else
+    log-error 'kind was not installed; checksum verification failed'
+  fi
 }
 
 install-docker() {

@@ -6,6 +6,7 @@ export PATH="${dotfiles_dir}/bin:${dotfiles_dir}/gists/bin:${HOME}/.local/bin:/u
 export DISABLE_AUTO_TITLE=true
 export LESS="$LESS -FRX"
 export AUTOENV_ENABLE_LEAVE=true
+export KIND_EXPERIMENTAL_PROVIDER="podman"
 
 if [ -x "$(command -v nvim)" ]; then
   export EDITOR="nvim"
