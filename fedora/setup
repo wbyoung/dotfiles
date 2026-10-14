@@ -31,6 +31,7 @@ install-packages() {
 
   run-cmd install-gnome-extensions
   run-cmd install-brave
+  run-cmd install-vivaldi
   run-cmd install-devtools
   run-cmd install-vscode
   run-cmd install-docker
@@ -128,6 +129,13 @@ install-brave() {
     --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
   sudo dnf --assumeyes --quiet install 2> /dev/null \
     brave-browser
+}
+
+install-vivaldi() {
+  sudo dnf -yq config-manager addrepo 2> /dev/null \
+    --from-repofile=https://repo.vivaldi.com/archive/vivaldi-fedora.repo
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    vivaldi-stable
 }
 
 install-devtools() {
