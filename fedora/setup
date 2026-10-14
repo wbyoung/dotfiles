@@ -35,6 +35,7 @@ install-packages() {
   run-cmd install-devtools
   run-cmd install-vscode
   run-cmd install-docker
+  run-cmd install-podman
 
   is-config-set "zsh-config" \
     && run-cmd install-zsh-plugin-dependencies
@@ -168,6 +169,30 @@ install-vscode() {
   dnf check-update &> /dev/null
   sudo dnf --assumeyes --quiet install 2> /dev/null \
     code # or code-insiders
+}
+
+install-podman() {
+  sudo dnf install --assumeyes --quiet podman
+
+  mkdir -p ~/.config/containers
+  mkdir -p ~/.local/share/containers/tmp
+  cat > ~/.config/containers/containers.conf <<EOF
+[engine]
+image_copy_tmp_dir = "/home/wbyoung/.local/share/containers/tmp"
+EOF
+
+  log-detail "installing podman-desktop"
+  flatpak remote-add --if-not-exists --user flathub https://flathub.org/repo/flathub.flatpakrepo
+  flatpak install --user flathub io.podman_desktop.PodmanDesktop
+
+  log-detail "increasing inotify limits"
+  log-detail "max_user_instances=$(sysctl fs.inotify.max_user_instances) -> 8192"
+  log-detail "max_user_watches=$(sysctl fs.inotify.max_user_watches) -> 524288"
+
+  sudo tee /etc/sysctl.d/99-kind-inotify.conf <<EOF
+fs.inotify.max_user_instances = 8192
+fs.inotify.max_user_watches = 524288
+EOF
 }
 
 install-docker() {
