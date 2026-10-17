@@ -65,6 +65,7 @@ install-all() {
   want-to-install "git config" && install-git-config
   want-to-install "gist commands" && install-gist-commands
   want-to-install "vscode config" && install-vscode-config
+  want-to-install "claude config" && install-claude-config
   want-to-install "tmux config" && install-tmux-config
   want-to-install "miscellaneous config" && install-miscellaneous-config
   is-fedora-linux && want-to-install "fedora settings" "and apps" && run-fedora-setup
@@ -113,6 +114,11 @@ install-gist-commands() {
 install-vscode-config() {
   log-info "[vscode]"
   install-dotfiles ".config/Code/User/" "vscode/*"
+}
+
+install-claude-config() {
+  log-info "[claude]"
+  install-dotfiles ".config/claude/" "claude/*"
 }
 
 install-tmux-config() {
@@ -385,6 +391,10 @@ parse-options() {
         CONFIG["vscode-config"]=$(parse-flag "${1}")
         shift
         ;;
+      --?(no)claude-config)
+        CONFIG["claude-config"]=$(parse-flag "${1}")
+        shift
+        ;;
       --?(no)tmux-config)
         CONFIG["tmux-config"]=$(parse-flag "${1}")
         shift
@@ -432,6 +442,7 @@ usage() {
   echo "	-d, --dry-run	Do not actually run commands"
   echo "	--[no-]fedora-settings"
   echo "	--[no-]alpine-settings"
+  echo "	--[no-]claude-config"
   echo "	--[no-]git-config-gpgssh"
   echo "	--[no-]git-config-sshcmd"
   echo "	--[no-]git-config"
