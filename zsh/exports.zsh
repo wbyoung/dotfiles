@@ -5,6 +5,8 @@ local dotfiles_dir="${${(%):-%x}:A:h:h}"
 export PATH="${dotfiles_dir}/bin:${dotfiles_dir}/gists/bin:${HOME}/.local/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 export DISABLE_AUTO_TITLE=true
 export LESS="$LESS -FRX"
+export AUTOENV_ENV_FILENAME=".autoenv"
+export AUTOENV_ENV_LEAVE_FILENAME=".autoenv.leave"
 export AUTOENV_ENABLE_LEAVE=true
 export KIND_EXPERIMENTAL_PROVIDER="podman"
 
