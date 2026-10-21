@@ -1,0 +1,111 @@
+#!/bin/bash
+
+set -eo pipefail
+
+if [ -t 1 ] && (
+  (
+  [ -x "$(command -v tput)" ] \
+    && [ -n "$(tput colors)" ] \
+    && [ "$(tput colors)" -ge 8 ] \
+  ) \
+  || [[ "$TERM" == *color* ]] \
+  || [[ -n "$COLORTERM" ]] \
+); then
+    export CLICOLOR=true
+fi
+
+if [ "${CLICOLOR:-}" = "true" ] || [ "${CLICOLOR:-}" = "1" ]; then
+  declare -gr GREEN="\033[0;32m"
+  declare -gr YELLOW="\033[0;33m"
+  declare -gr BLUE="\033[0;34m"
+  declare -gr MAGENTA="\033[0;35m"
+  declare -gr CYAN="\033[0;36m"
+  declare -gr RED="\033[0;31m"
+  declare -gr BOLD="\033[1m"
+  declare -gr RESET="\033[0m"
+fi
+
+sst-main() {
+  parse-options "$@"
+
+  local uuid
+  local label
+
+  while IFS= read -r uuid; do
+    uuid="${uuid%/}"
+    label=$(dconf read "/org/gnome/Ptyxis/Profiles/$uuid/label" | trim-single-quotes)
+    label="${label,,}"
+
+    if [[ "$label" =~ ${OPTIONS["profile"]} ]]; then
+      ptyxis \
+        "--title=${OPTIONS["title"]}" \
+        "--tab-with-profile=${uuid}" \
+        -- $SHELL -c 'SST_MODE="'"${OPTIONS["mode"]}"'" exec $SHELL -i'
+      return 0
+    fi
+  done < <(dconf list /org/gnome/Ptyxis/Profiles/)
+
+  printf "%berror: " "${RED}${BOLD}"
+  printf "%b" "${RESET}"
+  printf "%bcould not locate profile matching " "${YELLOW}"
+  printf "%b${OPTIONS["profile"]}" "${BLUE}${BOLD}"
+  printf "%b\n" "${RESET}"
+  exit 1
+}
+
+parse-options() {
+  declare -gA OPTIONS=()
+
+  while [ $# -ne 0 ]; do
+    case "$1" in
+      -m|--mode)
+        OPTIONS["mode"]="$2"
+        shift 2
+        ;;
+      -p|--profile)
+        OPTIONS["profile"]="$2"
+        shift 2
+        ;;
+      -t|--title)
+        OPTIONS["title"]="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        echo "invalid argument: ${1}" >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  OPTIONS["profile"]="${OPTIONS["profile"]:-sudo}"
+  OPTIONS["title"]="${OPTIONS["title"]:-Terminal}"
+  OPTIONS["mode"]="${OPTIONS["mode"]:-${OPTIONS["profile"]}}"
+}
+
+trim-single-quotes() {
+  local value=$(cat)
+  value=${value#\'}
+  value=${value%\'}
+  echo "$value"
+}
+
+usage() {
+  cat <<EOF
+Start a special shell environment in a new tab with a different profile; a
+special shell tab (sst).
+
+Options:
+    -m,-mode     The value for the SST_MODE environment variable.
+    -p,-profile  The profile label to select (regex).
+    -t,-title    The title for the tab.
+
+Usage:
+    prepare-container-images [options]
+EOF
+}
+
+sst-main "$@"
