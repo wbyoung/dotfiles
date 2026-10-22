@@ -88,6 +88,30 @@ write-ptyxis-settings() {
   dconf write /org/gnome/Ptyxis/Shortcuts/focus-tab-9 "'<Alt>parenleft'"
   dconf write /org/gnome/Ptyxis/Shortcuts/reset "''"
   dconf write /org/gnome/Ptyxis/Shortcuts/reset-and-clear "'<Shift><Control>k'"
+
+  local have_sudo_profile="no"
+
+  while IFS= read -r uuid; do
+    uuid="${uuid%/}"
+    label=$(dconf read "/org/gnome/Ptyxis/Profiles/$uuid/label")
+    label="${label,,}"
+
+    if [[ "$label" = "'sudo mode'" ]]; then
+      have_sudo_profile="yes"
+      break
+    fi
+  done < <(dconf list /org/gnome/Ptyxis/Profiles/)
+
+  if [ "${have_sudo_profile}" = "no" ]; then
+    local new_uuid=$(uuidgen | tr '[:upper:]' '[:lower:]' | sed 's/-//g')
+    local profile_path="/org/gnome/Ptyxis/Profiles/${new_uuid}"
+    local current_ids=$(dconf read /org/gnome/Ptyxis/profile-uuids | sed "s/\]$/, '${new_uuid}']/")
+    dconf write "${profile_path}/label" "'Sudo Mode'"
+    dconf write "${profile_path}/bold-is-bright" "false"
+    dconf write "${profile_path}/palette" "'Breath'"
+    dconf write "${profile_path}/preserve-directory" "'safe'"
+    dconf write /org/gnome/Ptyxis/profile-uuids "$current_ids"
+  fi
 }
 
 install-gnome-extensions() {
