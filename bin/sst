@@ -34,6 +34,7 @@ sst-main() {
   while IFS= read -r uuid; do
     uuid="${uuid%/}"
     label=$(dconf read "/org/gnome/Ptyxis/Profiles/$uuid/label" | trim-single-quotes)
+    label="${label:-Untitled Profile}"
     label="${label,,}"
 
     if [[ "$label" =~ ${OPTIONS["profile"]} ]]; then
@@ -45,11 +46,11 @@ sst-main() {
     fi
   done < <(dconf list /org/gnome/Ptyxis/Profiles/)
 
-  printf "%berror: " "${RED}${BOLD}"
-  printf "%b" "${RESET}"
-  printf "%bcould not locate profile matching " "${YELLOW}"
-  printf "%b${OPTIONS["profile"]}" "${BLUE}${BOLD}"
-  printf "%b\n" "${RESET}"
+  printf "%berror: " "${RED}${BOLD}" 1>&2
+  printf "%b" "${RESET}" 1>&2
+  printf "%bcould not locate profile matching " "${YELLOW}" 1>&2
+  printf "%b${OPTIONS["profile"]}" "${BLUE}${BOLD}" 1>&2
+  printf "%b\n" "${RESET}" 1>&2
   exit 1
 }
 
