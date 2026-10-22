@@ -9,6 +9,8 @@
     st = status -s
     gl = log --graph --pretty='%h %s'
     l  = log --pretty='%h %s'
+    wtr        = worktree remove
+    wtu        = worktree unlock
     unstage    = reset HEAD --
     last       = log -1 HEAD
     out        = log --branches --not --remotes --decorate --oneline

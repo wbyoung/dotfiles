@@ -21,7 +21,7 @@ aliases:
     git fetch
     git remote prune origin
     git co -b "${1:-next}" origin/main
-    declare -r merged=$(git branch --merged origin/main | grep -Ev "^\*")
+    declare -r merged=$(git branch --merged origin/main | grep -Ev "^(\*|\+)")
     if [ -n "$merged" ]; then
       git branch -D $merged;
     fi
