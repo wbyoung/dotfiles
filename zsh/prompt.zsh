@@ -1,7 +1,7 @@
 source-local "zsh/plugins.zsh"
 
 RPROMPT=""
-PROMPT='%{$fg[blue]%}%n%{$reset_color%}:%{$fg[magenta]%}%m%{$reset_color%}$(local_prompt_info):%{$fg_bold[cyan]%}${PWD/#$HOME/~}%{$reset_color%}$(virtualenv_prompt_info)$(git_prompt_info)$(vi_mode_prompt_info)
+PROMPT='$(local_prompt_host_info):%{$fg_bold[cyan]%}${PWD/#$HOME/~}%{$reset_color%}$(virtualenv_prompt_info)$(git_prompt_info)$(vi_mode_prompt_info)
 $(local_prompt_context_symbol) '
 
 VI_MODE_SET_CURSOR=true
@@ -21,4 +21,4 @@ ZSH_THEME_VIRTUAL_ENV_PROMPT_SUFFIX="%{$reset_color%}"
 
 # these can be overridden, for instance in .zshrc.local
 local_prompt_context_symbol() { echo "$"; }
-local_prompt_info() { ; }
+local_prompt_host_info() { echo "%{$fg[blue]%}%n%{$reset_color%}:%{$fg[magenta]%}%m%{$reset_color%}"; }
