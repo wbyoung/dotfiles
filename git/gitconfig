@@ -22,6 +22,8 @@
     excludesfile = ~/.gitignore_global
 [diff]
     renames = true
+	colorMoved = zebra
+	colorMovedWS = allow-indentation-change
 [color]
     ui = true
 [push]
