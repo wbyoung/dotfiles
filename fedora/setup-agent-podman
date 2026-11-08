@@ -263,29 +263,38 @@ label_repo() {
   restorecon -RF "$repo"
 }
 
-# bwrap runs with no-new-privs & nosuid mounts, so SELinux refuses the
-# usual unconfined_t -> container_runtime_t transition when the podman (or
-# docker) client starts inside it. podman still works, staying unconfined,
-# but every run logs an AVC denial & a desktop alert. allow the transition;
-# both domains are unconfined, so this grants nothing new.
+# SELinux rules for running tools in a bwrap sandbox, each of which would
+# otherwise log an AVC denial & a desktop alert:
+#
+# - bwrap runs with no-new-privs & nosuid mounts, so SELinux refuses the
+#   usual unconfined_t -> container_runtime_t transition when the podman (or
+#   docker) client starts inside it. podman still works, staying unconfined.
+#   both domains are unconfined, so allowing it grants nothing new.
+# - pasta (pasta_t), when it runs the sandbox in its own network namespace
+#   (`pasta -- bwrap …`), kills that command as it shuts down. allow it to
+#   signal what it started (unconfined_t) so it can clean up.
 install_selinux_module() {
   local dir cil
   if ! command -v selinuxenabled >/dev/null || ! selinuxenabled; then
     log "SELinux disabled; skipping ${SELINUX_MODULE_NAME} module"
     return
   fi
-  if semodule -l | grep -qx "$SELINUX_MODULE_NAME"; then
-    log "SELinux module ${SELINUX_MODULE_NAME} is installed"
-    return
-  fi
-  log "installing SELinux module ${SELINUX_MODULE_NAME}"
   dir="$(mktemp -d)"
   # semodule names the module after the file
   cil="${dir}/${SELINUX_MODULE_NAME}.cil"
   cat > "$cil" <<'EOF'
 (allow unconfined_t container_runtime_t (process2 (nnp_transition nosuid_transition)))
+(allow pasta_t unconfined_t (process (sigkill)))
 EOF
-  semodule -i "$cil"
+  # reinstall when the rules changed (same name replaces the old module)
+  mkdir "${dir}/installed"
+  if (cd "${dir}/installed" && semodule --cil -E "$SELINUX_MODULE_NAME" >/dev/null 2>&1) &&
+    cmp -s "$cil" "${dir}/installed/${SELINUX_MODULE_NAME}.cil"; then
+    log "SELinux module ${SELINUX_MODULE_NAME} is up to date"
+  else
+    log "installing SELinux module ${SELINUX_MODULE_NAME}"
+    semodule -i "$cil"
+  fi
   rm -rf "$dir"
 }
 

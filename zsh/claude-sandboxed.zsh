@@ -15,6 +15,12 @@
 #                     when it exists; only safe when the cluster runs as that
 #                     dedicated user)
 #   --init SCRIPT     shell snippet to run inside before the command
+#   --port N          also reach host localhost:N (TCP; repeatable). the
+#                     sandbox has its own network namespace (via pasta):
+#                     internet & DNS work, but not the host's abstract unix
+#                     sockets (i.e. X11) or services on its localhost, except
+#                     the kubeconfig's API server port & these
+#   --host-net        share the host's network namespace instead
 #
 # Environment:
 #   CLAUDE_SANDBOXED_SETTINGS   settings passed to claude with --settings
@@ -36,8 +42,8 @@ claude-sandboxed() {
   local settings="${CLAUDE_SANDBOXED_SETTINGS:-$HOME/.dotfiles/claude/sandbox-settings.json}"
   local gh_config="${CLAUDE_SANDBOXED_GH_CONFIG:-$HOME/.config/gh-claude}"
   local podman_dir=/run/agent-podman kube="$HOME/.kube/config"
-  local chdir="" init="" signkey="" dir
-  local -a rw_dirs=() ro_dirs=() args=()
+  local chdir="" init="" signkey="" isolate_net=1 dir tmp rc
+  local -a rw_dirs=() ro_dirs=() args=() host_ports=() runner=()
 
   # --- options ------------------------------------------------------------
 
@@ -52,6 +58,10 @@ claude-sandboxed() {
       --no-kube) kube=""; shift ;;
       --init) init="${2?--init needs a script}"; shift 2 ;;
       --init=*) init="${1#*=}"; shift ;;
+      --isolate-net) isolate_net=1; shift ;;  # the default; kept for scripts
+      --host-net) isolate_net=""; shift ;;
+      --port) host_ports+=("${2:?--port needs a port}"); shift 2 ;;
+      --port=*) host_ports+=("${1#*=}"); shift ;;
       --) shift; break ;;
       -*) echo "claude-sandboxed: unknown option: $1" >&2; return 2 ;;
       *) rw_dirs+=("$1"); shift ;;
@@ -122,12 +132,55 @@ EOF
     return 1
   fi
 
+  if [[ -n "$isolate_net" ]] && ! command -v pasta >/dev/null; then
+    echo "claude-sandboxed: needs pasta (dnf install passt), or use --host-net" >&2
+    return 1
+  fi
+
+  # generated files bound into the sandbox (removed when it exits). files
+  # rather than --ro-bind-data fds, which pasta may not pass through.
+  tmp="$(mktemp -d)" || return 1
+  print no-autostart > "$tmp/gpg.conf"
+
+  # --- network ---------------------------------------------------------------
+
+  if [[ -n "$isolate_net" ]]; then
+    # the cluster's API server, when it's on the host's localhost
+    if [[ -n "$kube" && -e "$kube" ]] &&
+      [[ "$(kubectl --kubeconfig "$kube" config view --minify \
+        -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null)" =~ \
+        '^https?://(127\.0\.0\.1|localhost):([0-9]+)' ]]; then
+      host_ports+=("$match[2]")
+    fi
+    host_ports=(${(u)host_ports})
+    # pasta's DNS forwarder; the host's resolver (i.e. systemd-resolved on
+    # 127.0.0.53) doesn't exist inside the new namespace
+    print "nameserver 169.254.1.1" > "$tmp/resolv.conf"
+    args+=(--ro-bind "$tmp/resolv.conf" /etc/resolv.conf)
+    runner=(
+      pasta --config-net --quiet
+      --dns-forward 169.254.1.1
+      # no route to the host's localhost, except these TCP ports
+      --no-map-gw
+      -T "${(j:,:)host_ports:-none}"
+      # nothing forwarded into the sandbox
+      -t none -u none -U none
+      --
+    )
+  else
+    args+=(--ro-bind /etc/resolv.conf /etc/resolv.conf)
+  fi
+
   # --- namespaces & pseudo filesystems ---------------------------------------
 
   args+=(
+    # run as you: pasta's user namespace makes you root (uid 0), which breaks
+    # tools that key off the uid (i.e. gpg looks for /run/user/0/gnupg)
+    --unshare-user --uid "$(id -u)" --gid "$(id -g)"
     --unshare-pid
     --die-with-parent
-    # network access; note this also shares abstract unix sockets (i.e. X11)
+    # pasta's namespace, or with --host-net the host's, which also shares its
+    # abstract unix sockets (i.e. X11) & localhost services
     --share-net
     --proc /proc
     --dev /dev
@@ -142,7 +195,6 @@ EOF
     --ro-bind /lib /lib
     --ro-bind /lib64 /lib64
     --ro-bind /bin /bin
-    --ro-bind /etc/resolv.conf /etc/resolv.conf
     --ro-bind /etc/hosts /etc/hosts
     --ro-bind /etc/passwd /etc/passwd
     --ro-bind /etc/group /etc/group
@@ -176,9 +228,8 @@ EOF
     args+=(
       # an empty gnupg home: no secret keys or revocation certificates
       --tmpfs "$HOME/.gnupg"
-      # fail instead of starting an agent/keyboxd inside the sandbox (contents
-      # come from fd 3 on the bwrap line below)
-      --ro-bind-data 3 "$HOME/.gnupg/gpg.conf"
+      # fail instead of starting an agent/keyboxd inside the sandbox
+      --ro-bind "$tmp/gpg.conf" "$HOME/.gnupg/gpg.conf"
       # the restricted agent socket (signing yes; key export etc. no) & keyboxd
       # started above; not the ssh or browser sockets
       --bind "$gpg_sockets/S.gpg-agent.extra" "$gpg_sockets/S.gpg-agent"
@@ -236,5 +287,32 @@ EOF
     set -- claude --settings "$settings" "${@:2}"
   fi
 
-  bwrap "${args[@]}" /bin/sh -c "${init}"$'\nexec "$@"' sh "$@" 3< <(print no-autostart)
+  # an absolute path: pasta runs confined (pasta_t) & would otherwise search
+  # $PATH, which SELinux denies for directories like ~/.local/bin
+  "${runner[@]}" "${commands[bwrap]:-bwrap}" "${args[@]}" \
+    /bin/sh -c "${init}"$'\nexec "$@"' sh "$@"
+  rc=$?
+  rm -rf "$tmp"
+  _claude_sandboxed_prune_spares "$settings"
+  return $rc
+}
+
+# claude's background-session supervisor starts inside each sandbox (it can't
+# reach one outside) & pre-starts a spare session. the sandbox's exit kills
+# it, leaving a failed, never-prompted "bg" entry in the sessions list every
+# launch. remove those (only ones launched with the sandbox settings) with
+# `claude rm`. note: ~/.claude/jobs isn't a stable interface, so if it
+# changes this just stops matching.
+_claude_sandboxed_prune_spares() {
+  local settings="$1" state
+  command -v jq >/dev/null || return 0
+  for state in "$HOME"/.claude/jobs/*/state.json(N); do
+    jq -e --arg settings "$settings" '
+      .state == "failed" and .template == "bg"
+        and (.detail // "" | startswith("(idle"))
+        and ((.respawnFlags // []) | index($settings) != null)
+    ' "$state" >/dev/null 2>&1 || continue
+    claude rm "${${state:h}:t}" >/dev/null 2>&1
+  done
+  return 0
 }
