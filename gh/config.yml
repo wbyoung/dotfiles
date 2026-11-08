@@ -1,27 +1,60 @@
 version: 1
-
 color_labels: enabled
 spinner: enabled
-
 aliases:
   co: pr checkout
   cpr: |
     !set -e
-    git push -u origin HEAD
-    gh pr create --fill
-    gh pr view --web
 
-    if [ -x ./node_modules/.bin/prettier ]; then
-      git show -s --format=%b HEAD \
-        | ./node_modules/.bin/prettier --parser markdown --prose-wrap never \
-        | wl-copy
+    declare root title body
+    root="$(git rev-parse --show-toplevel)"
+
+    declare prettier="./node_modules/.bin/prettier"
+
+    prettier="$(
+      { [ -x "$prettier" ] && realpath "$prettier"; } ||
+      { [ -x "../$prettier" ] && realpath "../$prettier"; } ||
+      { [ -x "../../$prettier" ] && realpath "../../$prettier"; } ||
+      { [ -x "../../../$prettier" ] && realpath "../../../$prettier"; } ||
+      true
+    )"
+
+    if [ -f "$root/PR.md" ]; then
+      title="$(head -n 1 "$root/PR.md" | sed -E 's/^#+[[:space:]]*//')"
+      body="$(tail -n +2 "$root/PR.md")"
+    else
+      title="$(git show -s --format=%s HEAD)"
+      body="$(git show -s --format=%b HEAD)"
     fi
+
+    if [ -x "$prettier" ]; then
+      body="$(printf '%s\n' "$body" | "$prettier" --parser markdown --prose-wrap never)"
+    fi
+
+    git push -u origin HEAD
+    gh pr create --title "$title" --body "$body"
+    gh pr view --web
   next: |
     !set -e
+    declare -r next="${1:-next}"
+
     git fetch
     git remote prune origin
-    git co -b "${1:-next}" origin/main
-    declare -r merged=$(git branch --merged origin/main | grep -Ev "^(\*|\+)")
+    if git merge-base --is-ancestor "$next" origin/main 2>/dev/null; then
+      git checkout "$next"
+      git merge --ff-only origin/main
+    elif git show-ref --quiet --verify "$next"; then
+      git checkout "$next"
+      echo "$next branch exists, but is not an ancestor of origin/main, skipping fast-forward"
+    else
+      git checkout -b "$next" origin/main
+    fi
+
+    declare -r merged=$(
+      git branch --merged origin/main \
+        | grep -vxF "$next" \
+        | grep -vE "^(\*|\+)"
+      )
     if [ -n "$merged" ]; then
       git branch -D $merged;
     fi
