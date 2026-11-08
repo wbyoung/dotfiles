@@ -1,19 +1,8 @@
 {
   "permissions": {
-    "deny": [
-      "Bash(curl:*)",
-      "Bash(git commit *)",
-      "Bash(git push *)",
-      "Bash(rm -rf *)",
-      "Bash(wget:*)",
-      "Read(~/.env*)",
-      "Read(~/.ssh/*)"
-    ],
     "ask": [
-      "Bash(gh *)",
       "Bash(npm install *)",
       "Bash(pnpm add *)",
-      "Bash(rm *)",
       "Bash(yarn add *)"
     ],
     "ask-disabled": [
@@ -24,9 +13,9 @@
     ]
   },
   "theme": "auto",
-	"statusLine": {
-		"type": "command",
-		"command": "npx -y ccusage statusline",
-		"padding": 0
-	}
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccusage statusline",
+    "padding": 0
+  }
 }

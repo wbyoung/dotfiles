@@ -1,0 +1,18 @@
+#!/bin/sh
+# Installs Claude Code managed settings & the outside-the-sandbox hook,
+# root-owned, where no Claude session (sandboxed or not) can change them.
+# Run outside the sandbox: sudo ./install
+set -eu
+src=$(cd "$(dirname "$0")" && pwd)
+[ "$(id -u)" -eq 0 ] || { echo "run as root: sudo $0" >&2; exit 1; }
+
+install -D -o root -g root -m 0755 "$src/claude-outside-sandbox-ask" \
+  /usr/local/libexec/claude-outside-sandbox-ask
+if [ -e /etc/claude-code/managed-settings.json ] &&
+  ! cmp -s "$src/managed-settings.json" /etc/claude-code/managed-settings.json; then
+  cp /etc/claude-code/managed-settings.json \
+    "/etc/claude-code/managed-settings.json.$(date +%Y%m%d%H%M%S).bak"
+fi
+install -D -o root -g root -m 0644 "$src/managed-settings.json" \
+  /etc/claude-code/managed-settings.json
+echo "installed; restart Claude Code sessions to pick it up"

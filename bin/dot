@@ -118,7 +118,7 @@ install-vscode-config() {
 
 install-claude-config() {
   log-info "[claude]"
-  install-dotfiles ".config/claude/" "claude/*"
+  install-dotfiles ".claude/" "claude/*"
 }
 
 install-tmux-config() {

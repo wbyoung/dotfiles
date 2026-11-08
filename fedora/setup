@@ -44,6 +44,8 @@ install-packages() {
     && run-cmd install-vim
   is-config-set "git-config" \
     && run-cmd install-gh
+  is-config-set "claude-config" \
+    && run-cmd install-claude-sandbox-config
 }
 
 write-gnome-settings() {
@@ -170,6 +172,7 @@ install-devtools() {
     git \
     patch \
     patchutils \
+    bubblewrap \
     gcc-c++ \
     python3-devel \
     python3.13 \
@@ -198,6 +201,7 @@ install-vscode() {
 
 install-podman() {
   sudo dnf install --assumeyes --quiet podman
+  systemctl --user enable --now podman.socket
 
   mkdir -p ~/.config/containers
   mkdir -p ~/.local/share/containers/tmp
@@ -218,6 +222,13 @@ EOF
 fs.inotify.max_user_instances = 8192
 fs.inotify.max_user_watches = 524288
 EOF
+
+  # these `AGENT_*` vars allow values to be defined in `~/.zshrc.local`.
+  sudo \
+    REPO_ACCESS="$AGENT_PODMAN_REPO_ACCESS" \
+    RESTRICT_OTHER="$AGENT_PODMAN_RESTRICT_OTHER" \
+    REPOS="$AGENT_PODMAN_REPOS" \
+    "${HOME}/.dotfiles/fedora/setup-agent-podman"
 }
 
 install-kind() {
@@ -264,6 +275,10 @@ install-gh() {
     --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
   sudo dnf --assumeyes --quiet install --repo gh-cli 2> /dev/null \
     gh
+}
+
+install-claude-sandbox-config() {
+  sudo "${HOME}/.dotfiles/claude/managed/install"
 }
 
 if [ "${BASH_SOURCE[0]}" == "${0}" ]; then

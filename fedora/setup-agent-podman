@@ -1,0 +1,408 @@
+#!/usr/bin/env bash
+#
+# Set up a dedicated, unprivileged user that runs rootless podman for
+# sandboxed agents, and expose its API socket to one other user.
+#
+# Anything able to use the socket can do whatever this user can, and
+# nothing more: it can't read your home directory, your podman storage,
+# your containers or your credentials. It has no password, no login
+# shell & no sudo.
+#
+# Run as root. Non-interactive & idempotent (safe to re-run to repair or
+# change settings).
+#
+#   sudo ./setup-agent-podman
+#   sudo REPO_ACCESS=ro REPOS=~/src/my-project ./setup-agent-podman
+#   sudo ./setup-agent-podman --uninstall
+#
+# Environment:
+#   AGENT_USER   user that runs podman (default: agent-podman)
+#   ACCESS_USER  user allowed to use the socket (default: $SUDO_USER)
+#   SOCKET_DIR   where the socket lives (default: /run/$AGENT_USER)
+#   REPO_ACCESS  none | ro | rw — let containers bind mount REPOS via
+#                ACLs & (with SELinux) a persistent container_file_t
+#                label (default: none)
+#   REPOS        colon-separated directories for REPO_ACCESS
+#   RESTRICT_OTHER  yes | no — REPO_ACCESS makes the parents of REPOS
+#                that you own traversable by AGENT_USER, exposing what's
+#                in them to "other". always gives them a default ACL so
+#                new entries start private; with yes, also removes
+#                "other" access from existing entries (non-recursive),
+#                otherwise lists them (default: no)
+#   SELINUX_MODULE  yes | no — install the claude_bwrap_podman policy
+#                module that silences AVC alerts when podman clients
+#                run inside bwrap (default: yes)
+#
+set -euo pipefail
+
+AGENT_USER="${AGENT_USER:-agent-podman}"
+ACCESS_USER="${ACCESS_USER:-${SUDO_USER:-}}"
+SOCKET_DIR="${SOCKET_DIR:-/run/${AGENT_USER}}"
+REPO_ACCESS="${REPO_ACCESS:-none}"
+REPOS="${REPOS:-}"
+RESTRICT_OTHER="${RESTRICT_OTHER:-no}"
+SELINUX_MODULE="${SELINUX_MODULE:-yes}"
+SELINUX_MODULE_NAME="claude_bwrap_podman"
+TMPFILES_CONF="/etc/tmpfiles.d/${AGENT_USER}.conf"
+SUBID_COUNT=65536
+
+log() { printf '\033[1m==>\033[0m %s\n' "$*" >&2; }
+warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
+die() { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+
+agent_uid() { id -u "$AGENT_USER"; }
+
+# run a command as the agent user inside its systemd user session
+as_agent() {
+  local uid
+  uid="$(agent_uid)"
+  (cd / && runuser -u "$AGENT_USER" -- env \
+    HOME="$(agent_home)" \
+    XDG_RUNTIME_DIR="/run/user/${uid}" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${uid}/bus" \
+    "$@")
+}
+
+agent_home() { getent passwd "$AGENT_USER" | cut -d: -f6; }
+
+preflight() {
+  [ "$(id -u)" -eq 0 ] || die "run as root, i.e. sudo $0"
+  [[ "$AGENT_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "invalid AGENT_USER: ${AGENT_USER}"
+  if [ "${1:-}" != "--uninstall" ]; then
+    [ -n "$ACCESS_USER" ] || die "set ACCESS_USER (or run via sudo) to choose who can use the socket"
+    id -u "$ACCESS_USER" >/dev/null 2>&1 || die "no such user: ${ACCESS_USER}"
+    [ "$ACCESS_USER" != "root" ] && [ "$ACCESS_USER" != "$AGENT_USER" ] ||
+      die "ACCESS_USER must be a regular user other than ${AGENT_USER}"
+    command -v podman >/dev/null || die "podman is not installed"
+    case "$REPO_ACCESS" in
+      none|ro|rw) ;;
+      *) die "REPO_ACCESS must be none, ro or rw" ;;
+    esac
+    case "$RESTRICT_OTHER" in
+      yes|no) ;;
+      *) die "RESTRICT_OTHER must be yes or no" ;;
+    esac
+    if [ "$REPO_ACCESS" != "none" ]; then
+      [ -n "$REPOS" ] || die "REPO_ACCESS=${REPO_ACCESS} needs REPOS"
+      command -v setfacl >/dev/null || die "setfacl is not installed (dnf install acl)"
+    fi
+  fi
+}
+
+create_user() {
+  if id -u "$AGENT_USER" >/dev/null 2>&1; then
+    log "user ${AGENT_USER} exists"
+  else
+    log "creating user ${AGENT_USER}"
+    # a regular (not system) user so SELinux home directory contexts apply
+    # to its container storage. nologin keeps it out of login screens.
+    useradd --create-home --user-group --shell /usr/sbin/nologin \
+      --comment "Rootless podman for sandboxed agents" "$AGENT_USER"
+  fi
+  usermod --lock "$AGENT_USER" >/dev/null 2>&1
+  chmod 0700 "$(agent_home)"
+}
+
+# rootless podman needs a range of subordinate ids. useradd usually
+# allocates them; add a non-overlapping range when it didn't.
+ensure_subids() {
+  local file="$1" flag="$2" start
+  touch "$file"
+  if grep -qE "^(${AGENT_USER}|$(agent_uid)):" "$file"; then
+    return
+  fi
+  start="$(awk -F: -v min=100000 '
+    { end = $2 + $3; if (end > min) min = end }
+    END { print min }' "$file")"
+  log "adding ${file##*/} range ${start}-$((start + SUBID_COUNT - 1))"
+  usermod "$flag" "${start}-$((start + SUBID_COUNT - 1))" "$AGENT_USER"
+}
+
+setup_socket_dir() {
+  log "socket directory ${SOCKET_DIR} (group ${AGENT_USER})"
+  cat > "$TMPFILES_CONF" <<EOF
+# created by setup-agent-podman: API socket for ${AGENT_USER}'s podman
+d ${SOCKET_DIR} 0750 ${AGENT_USER} ${AGENT_USER} -
+EOF
+  systemd-tmpfiles --create "$TMPFILES_CONF"
+
+  if id -nG "$ACCESS_USER" | tr ' ' '\n' | grep -qx "$AGENT_USER"; then
+    log "${ACCESS_USER} is already in group ${AGENT_USER}"
+  else
+    log "adding ${ACCESS_USER} to group ${AGENT_USER}"
+    usermod --append --groups "$AGENT_USER" "$ACCESS_USER"
+    NEEDS_RELOGIN=yes
+  fi
+}
+
+setup_podman_socket() {
+  local home dropin uid i
+  home="$(agent_home)"
+  uid="$(agent_uid)"
+  dropin="${home}/.config/systemd/user/podman.socket.d"
+
+  log "pointing ${AGENT_USER}'s podman.socket at ${SOCKET_DIR}/podman.sock"
+  as_agent mkdir -p "$dropin"
+  as_agent tee "${dropin}/50-agent-podman.conf" >/dev/null <<EOF
+# created by setup-agent-podman
+[Socket]
+ListenStream=
+ListenStream=${SOCKET_DIR}/podman.sock
+SocketMode=0660
+EOF
+  if command -v restorecon >/dev/null; then
+    restorecon -RF "$home"
+  fi
+
+  # lingering starts the user's systemd instance at boot, without a login
+  log "enabling lingering for ${AGENT_USER}"
+  loginctl enable-linger "$AGENT_USER"
+  systemctl start "user@${uid}.service"
+  for i in $(seq 1 30); do
+    [ -S "/run/user/${uid}/bus" ] && break
+    sleep 1
+  done
+  [ -S "/run/user/${uid}/bus" ] || die "${AGENT_USER}'s systemd user session did not start"
+
+  as_agent systemctl --user daemon-reload
+  as_agent systemctl --user stop podman.service podman.socket 2>/dev/null || true
+  as_agent systemctl --user enable --now podman.socket
+}
+
+grant_repo_access() {
+  local perms="rX" repo dir
+  local -a repos
+  local -A owned_parents=()
+  [ "$REPO_ACCESS" = "rw" ] && perms="rwX"
+  IFS=: read -ra repos <<< "$REPOS"
+
+  for repo in "${repos[@]}"; do
+    [ -n "$repo" ] || continue
+    repo="$(realpath -e "$repo")" || die "no such directory: ${repo}"
+    [ -d "$repo" ] || die "not a directory: ${repo}"
+    log "granting ${AGENT_USER} ${REPO_ACCESS} access to ${repo}"
+
+    # traverse (but not list) each parent so bind mounts can resolve
+    dir="$(dirname "$repo")"
+    while [ "$dir" != "/" ]; do
+      setfacl -m "u:${AGENT_USER}:x" "$dir"
+      if [ "$(stat -c %U "$dir")" = "$ACCESS_USER" ]; then
+        owned_parents["$dir"]=1
+      fi
+      dir="$(dirname "$dir")"
+    done
+
+    setfacl -R -m "u:${AGENT_USER}:${perms}" "$repo"
+    setfacl -R -d -m "u:${AGENT_USER}:${perms}" "$repo"
+    if [ "$REPO_ACCESS" = "rw" ]; then
+      # files containers create are owned by ${AGENT_USER}'s ids; keep them
+      # editable by you
+      setfacl -R -d -m "u:${ACCESS_USER}:rwX" "$repo"
+    fi
+
+    label_repo "$repo"
+  done
+
+  for dir in "${!owned_parents[@]}"; do
+    restrict_other "$dir"
+  done
+}
+
+# the parents of REPOS that you own (i.e. your home & ~/Code) are now
+# traversable by ${AGENT_USER}, so anything in them that "other" can access
+# is open to it too, not just to other users. new entries start private via
+# a default ACL; existing ones are closed with RESTRICT_OTHER=yes (closing a
+# directory hides everything below it), or listed otherwise. REPOS keep
+# working since ${AGENT_USER} reaches them through its own ACL entries.
+restrict_other() {
+  local dir="$1" entry
+  local -a exposed=()
+
+  setfacl -d -m o::--- "$dir"
+
+  while IFS= read -r -d '' entry; do
+    [ "$(stat -c %U "$entry")" = "$ACCESS_USER" ] || continue
+    if [ "$RESTRICT_OTHER" = "yes" ]; then
+      chmod o-rwx "$entry"
+    else
+      exposed+=("$entry")
+    fi
+  done < <(find "$dir" -mindepth 1 -maxdepth 1 ! -type l -perm /o=rwx -print0)
+
+  if [ "$RESTRICT_OTHER" = "yes" ]; then
+    log "${dir}: new entries are private; existing ones closed to \"other\""
+  elif [ ${#exposed[@]} -ne 0 ]; then
+    warn "${dir}: new entries are private, but ${#exposed[@]} existing ones are"
+    warn "open to \"other\" & so readable by ${AGENT_USER}, i.e.:"
+    printf '    %s\n' "${exposed[@]:0:10}" >&2
+    warn "close them with: chmod o-rwx <path> (or re-run with RESTRICT_OTHER=yes)"
+  fi
+}
+
+# SELinux keeps containers away from files labeled as part of a home
+# directory regardless of ACLs, and the usual fix (a :z mount) relabels
+# files, which only their owner may do. label each repository as container
+# files instead, persistently, so containers can bind mount it with SELinux
+# still on. new files inherit the label from their directory.
+label_repo() {
+  local repo="$1" spec
+  if ! command -v selinuxenabled >/dev/null || ! selinuxenabled; then
+    return
+  fi
+  if ! command -v semanage >/dev/null; then
+    warn "semanage is missing (dnf install policycoreutils-python-utils);"
+    warn "containers can't read ${repo} until it's labeled container_file_t"
+    return
+  fi
+  spec="${repo}(/.*)?"
+  log "labeling ${repo} for containers (SELinux container_file_t)"
+  semanage fcontext -a -t container_file_t "$spec" 2>/dev/null ||
+    semanage fcontext -m -t container_file_t "$spec"
+  # -F resets the whole label, including MCS categories left by earlier :Z
+  # mounts, which would restrict files to the one container that made them
+  restorecon -RF "$repo"
+}
+
+# bwrap runs with no-new-privs & nosuid mounts, so SELinux refuses the
+# usual unconfined_t -> container_runtime_t transition when the podman (or
+# docker) client starts inside it. podman still works, staying unconfined,
+# but every run logs an AVC denial & a desktop alert. allow the transition;
+# both domains are unconfined, so this grants nothing new.
+install_selinux_module() {
+  local dir cil
+  if ! command -v selinuxenabled >/dev/null || ! selinuxenabled; then
+    log "SELinux disabled; skipping ${SELINUX_MODULE_NAME} module"
+    return
+  fi
+  if semodule -l | grep -qx "$SELINUX_MODULE_NAME"; then
+    log "SELinux module ${SELINUX_MODULE_NAME} is installed"
+    return
+  fi
+  log "installing SELinux module ${SELINUX_MODULE_NAME}"
+  dir="$(mktemp -d)"
+  # semodule names the module after the file
+  cil="${dir}/${SELINUX_MODULE_NAME}.cil"
+  cat > "$cil" <<'EOF'
+(allow unconfined_t container_runtime_t (process2 (nnp_transition nosuid_transition)))
+EOF
+  semodule -i "$cil"
+  rm -rf "$dir"
+}
+
+verify() {
+  local out
+  log "verifying as ${ACCESS_USER}"
+  # runuser initializes groups from scratch, so the new membership applies
+  if ! out="$(cd / && runuser -u "$ACCESS_USER" -- env -i PATH="$PATH" \
+      HOME="$(getent passwd "$ACCESS_USER" | cut -d: -f6)" \
+      podman --url "unix://${SOCKET_DIR}/podman.sock" info \
+      --format '{{.Host.Security.Rootless}} {{.Store.GraphRoot}}' 2>&1)"; then
+    die "podman isn't reachable through ${SOCKET_DIR}/podman.sock: ${out}"
+  fi
+  log "ok: rootless=${out%% *} storage=${out#* }"
+}
+
+next_steps() {
+  cat <<EOF
+
+Done. ${AGENT_USER}'s podman listens on ${SOCKET_DIR}/podman.sock and
+starts at boot.
+EOF
+  if [ "${NEEDS_RELOGIN:-}" = "yes" ]; then
+    cat <<EOF
+
+* Log out & back in (or reboot) so ${ACCESS_USER}'s sessions pick up the
+  ${AGENT_USER} group. Until then: sg ${AGENT_USER} -c '<command>'
+EOF
+  fi
+  cat <<EOF
+
+* In the bwrap sandbox, replace the ${ACCESS_USER} podman socket bind with:
+
+    --bind ${SOCKET_DIR} ${SOCKET_DIR} \\
+    --setenv CONTAINER_HOST unix://${SOCKET_DIR}/podman.sock \\
+    --setenv DOCKER_HOST unix://${SOCKET_DIR}/podman.sock \\
+
+* Outside the sandbox, use it with:
+
+    podman --url unix://${SOCKET_DIR}/podman.sock ps
+    podman system connection add ${AGENT_USER} unix://${SOCKET_DIR}/podman.sock
+
+* Its images are separate from yours. Copy ones you've built with:
+
+    podman save localhost/my-image | podman --url unix://${SOCKET_DIR}/podman.sock load
+EOF
+}
+
+uninstall() {
+  local uid home
+  if id -u "$AGENT_USER" >/dev/null 2>&1; then
+    uid="$(agent_uid)"
+    home="$(agent_home)"
+    log "stopping ${AGENT_USER}'s podman & session"
+    if [ -S "/run/user/${uid}/bus" ]; then
+      as_agent podman system reset --force >/dev/null 2>&1 || true
+    fi
+    loginctl disable-linger "$AGENT_USER" || true
+    systemctl stop "user@${uid}.service" || true
+    pkill -u "$AGENT_USER" || true
+
+    local member
+    for member in $(getent group "$AGENT_USER" | cut -d: -f4 | tr ',' ' '); do
+      log "removing ${member} from group ${AGENT_USER}"
+      gpasswd --delete "$member" "$AGENT_USER" >/dev/null
+    done
+
+    log "deleting user ${AGENT_USER} & ${home}"
+    userdel --remove "$AGENT_USER" 2>/dev/null || userdel "$AGENT_USER"
+    rm -rf "$home"
+    sed -i "/^${AGENT_USER}:/d;/^${uid}:/d" /etc/subuid /etc/subgid 2>/dev/null || true
+  fi
+  rm -f "$TMPFILES_CONF"
+  rm -rf "$SOCKET_DIR"
+  cat <<EOF
+
+Removed ${AGENT_USER}. ACLs granted with REPO_ACCESS are left in place;
+remove them with: setfacl -R -x u:${AGENT_USER},d:u:${AGENT_USER} <dir>
+(and setfacl -x u:${AGENT_USER} on each parent directory). Their SELinux
+labels stay too; restore them with:
+semanage fcontext -d '<dir>(/.*)?' && restorecon -R <dir>
+
+The ${SELINUX_MODULE_NAME} SELinux module is also left in place since it
+applies to any podman client run inside bwrap. Remove it with:
+semodule -r ${SELINUX_MODULE_NAME}
+EOF
+}
+
+main() {
+  if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    sed -n '2,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'
+    return
+  fi
+  preflight "${1:-}"
+  case "${1:-}" in
+    --uninstall)
+      uninstall
+      ;;
+    "")
+      create_user
+      ensure_subids /etc/subuid --add-subuids
+      ensure_subids /etc/subgid --add-subgids
+      setup_socket_dir
+      setup_podman_socket
+      if [ "$REPO_ACCESS" != "none" ]; then
+        grant_repo_access
+      fi
+      if [ "$SELINUX_MODULE" = "yes" ]; then
+        install_selinux_module
+      fi
+      verify
+      next_steps
+      ;;
+    *)
+      die "unknown argument: $1 (see --help)"
+      ;;
+  esac
+}
+
+main "$@"

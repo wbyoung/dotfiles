@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth status)",
+      "Bash(gh auth status *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr list)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr status)",
+      "Bash(gh pr status *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh run list)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)",
+      "Bash(gh run download *)",
+      "Bash(gh workflow list)",
+      "Bash(gh workflow list *)",
+      "Bash(gh workflow view *)",
+      "Bash(gh repo view)",
+      "Bash(gh repo view *)",
+      "Bash(gh release list *)",
+      "Bash(gh release view *)",
+      "Bash(gh label list *)",
+      "Bash(gh search *)",
+      "Bash(gh api repos/*/actions/*)"
+    ],
+    "deny": [
+      "Bash(gh pr review * --approve*)",
+      "Bash(gh pr review * -a*)",
+      "Bash(gh pr merge *)"
+    ]
+  }
+}

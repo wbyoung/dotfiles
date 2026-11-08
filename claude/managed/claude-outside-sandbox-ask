@@ -1,0 +1,73 @@
+#!/usr/bin/python3 -I
+"""Claude Code PreToolUse hook for Bash.
+
+Outside the bwrap sandbox, always ask before commands that act with your
+own credentials (GitHub, Google Cloud, your containers, clusters, SSH).
+Inside the sandbox (CLAUDE_BWRAP_SANDBOX=1, set by the launcher) it defers
+to the normal permission rules, where those tools use sandbox-only
+credentials.
+
+A hook "ask" prompts even when an allow rule matches, so nothing in user or
+project settings can switch this off. Install root-owned (with managed
+settings) so a sandboxed session can't change it either.
+"""
+
+import json
+import os
+import re
+import shlex
+import sys
+
+TOOLS = {
+    "gh", "gcloud", "gsutil", "bq",
+    "kubectl", "helm", "kind", "stern",
+    "podman", "docker", "buildah", "skopeo",
+    "ssh", "scp", "sftp", "rsync",
+}
+# commands that run another command given as arguments
+WRAPPERS = {"sudo", "env", "exec", "command", "nohup", "time", "xargs",
+            "timeout", "nice", "watch"}
+ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# wrapper arguments like `timeout 30s` or `nice -n 10`
+WRAPPER_ARG = re.compile(r"^(-.*|\d+(\.\d+)?[smhd]?)$")
+
+
+def credentialed(command):
+    # split into simple commands on shell control characters; crude, but it
+    # only has to find command words, and false positives just prompt
+    for segment in re.split(r"[;&|()`\n]|\$\(", command):
+        try:
+            words = shlex.split(segment, comments=True)
+        except ValueError:
+            words = segment.split()
+        wrapped = False
+        while words and (ASSIGNMENT.match(words[0]) or words[0] in WRAPPERS
+                         or (wrapped and WRAPPER_ARG.match(words[0]))):
+            wrapped = wrapped or words[0] in WRAPPERS
+            words = words[1:]
+        if words and os.path.basename(words[0]) in TOOLS:
+            return os.path.basename(words[0])
+    return None
+
+
+def main():
+    if os.environ.get("CLAUDE_BWRAP_SANDBOX") == "1":
+        return
+    try:
+        event = json.load(sys.stdin)
+    except ValueError:
+        return
+    tool = credentialed((event.get("tool_input") or {}).get("command") or "")
+    if tool:
+        json.dump({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason":
+                    f"outside the sandbox, {tool} acts with your own credentials",
+            }
+        }, sys.stdout)
+
+
+if __name__ == "__main__":
+    main()
