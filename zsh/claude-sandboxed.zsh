@@ -15,6 +15,10 @@
 #                     when it exists; only safe when the cluster runs as that
 #                     dedicated user)
 #   --init SCRIPT     shell snippet to run inside before the command
+#   --env NAME[=VAL]  pass an environment variable in: NAME forwards its
+#                     current value (if set). the sandbox otherwise starts
+#                     with a clean environment & only basics (HOME, PATH,
+#                     LANG, TERM, EDITOR, …) are kept (repeatable)
 #   --port N          also reach host localhost:N (TCP; repeatable). the
 #                     sandbox has its own network namespace (via pasta):
 #                     internet & DNS work, but not the host's abstract unix
@@ -43,7 +47,7 @@ claude-sandboxed() {
   local gh_config="${CLAUDE_SANDBOXED_GH_CONFIG:-$HOME/.config/gh-claude}"
   local podman_dir=/run/agent-podman kube="$HOME/.kube/config"
   local chdir="" init="" signkey="" isolate_net=1 dir tmp rc
-  local -a rw_dirs=() ro_dirs=() args=() host_ports=() runner=()
+  local -a rw_dirs=() ro_dirs=() args=() host_ports=() runner=() env_vars=()
 
   # --- options ------------------------------------------------------------
 
@@ -62,6 +66,8 @@ claude-sandboxed() {
       --host-net) isolate_net=""; shift ;;
       --port) host_ports+=("${2:?--port needs a port}"); shift 2 ;;
       --port=*) host_ports+=("${1#*=}"); shift ;;
+      --env) env_vars+=("${2:?--env needs a variable}"); shift 2 ;;
+      --env=*) env_vars+=("${1#*=}"); shift ;;
       --) shift; break ;;
       -*) echo "claude-sandboxed: unknown option: $1" >&2; return 2 ;;
       *) rw_dirs+=("$1"); shift ;;
@@ -141,6 +147,10 @@ EOF
   # rather than --ro-bind-data fds, which pasta may not pass through.
   tmp="$(mktemp -d)" || return 1
   print no-autostart > "$tmp/gpg.conf"
+
+  # a clean environment (i.e. no tokens or desktop sockets); what's needed is
+  # set below. must come before any --setenv.
+  args+=(--clearenv)
 
   # --- network ---------------------------------------------------------------
 
@@ -246,7 +256,6 @@ EOF
   if [[ -n "$WAYLAND_DISPLAY" ]]; then
     args+=(--bind "$runtime_dir/$WAYLAND_DISPLAY" "$runtime_dir/$WAYLAND_DISPLAY")
   fi
-  args+=(--unsetenv DISPLAY)  # no X11
 
   # --- containers & kubernetes ---------------------------------------------------
 
@@ -272,6 +281,24 @@ EOF
   args+=(--chdir "$chdir")
 
   # --- environment --------------------------------------------------------------
+
+  # basics from your environment (locale, terminal, editor, …); nothing that
+  # points at credentials or things the sandbox can't reach (i.e. DISPLAY,
+  # DBUS_SESSION_BUS_ADDRESS, SSH_AUTH_SOCK)
+  local -a keep=(
+    HOME USER LOGNAME SHELL PATH LANG TZ ${(k)parameters[(I)LC_*]}
+    TERM COLORTERM EDITOR VISUAL GIT_EDITOR PAGER LESS GPG_TTY
+    KIND_EXPERIMENTAL_PROVIDER XDG_SESSION_TYPE
+  )
+  [[ -n "$WAYLAND_DISPLAY" ]] && keep+=(WAYLAND_DISPLAY)
+  local var
+  for var in "${keep[@]}" "${env_vars[@]}"; do
+    if [[ "$var" == *=* ]]; then
+      args+=(--setenv "${var%%=*}" "${var#*=}")
+    elif [[ -n "${(P)var}" ]]; then
+      args+=(--setenv "$var" "${(P)var}")
+    fi
+  done
 
   args+=(
     --setenv XDG_RUNTIME_DIR "$runtime_dir"
