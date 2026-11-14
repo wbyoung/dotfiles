@@ -1,0 +1,6 @@
+#!/bin/sh
+# prints the Podman socket for a kind cluster's nodes. this allows dev tools to
+# lookup which host to use & facilitates sandboxing.
+case "$1" in
+  kind) echo unix:///run/agent-podman/podman.sock ;;
+esac
