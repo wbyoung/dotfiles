@@ -306,6 +306,24 @@ EOF
     --setenv CLAUDE_BWRAP_SANDBOX 1
   )
 
+  # git talks to github over https with the sandbox's gh token (fetch only,
+  # if that token is read-only), even for ssh remotes. sandbox-only config
+  # via env, so the host's ~/.gitconfig is untouched.
+  local -a git_config=(
+    credential.https://github.com.helper ''   # drop any inherited helpers
+    credential.https://github.com.helper '!gh auth git-credential'
+    url.https://github.com/.insteadOf git@github.com:
+    url.https://github.com/.insteadOf ssh://git@github.com/
+  )
+  local -i i
+  args+=(--setenv GIT_CONFIG_COUNT $(( ${#git_config} / 2 )))
+  for (( i = 1; i <= ${#git_config}; i += 2 )); do
+    args+=(
+      --setenv GIT_CONFIG_KEY_$(( (i - 1) / 2 )) "${git_config[i]}"
+      --setenv GIT_CONFIG_VALUE_$(( (i - 1) / 2 )) "${git_config[i+1]}"
+    )
+  done
+
   # --- run ------------------------------------------------------------------------
 
   # claude gets the sandbox-only permissions (i.e. gh with the limited token)
