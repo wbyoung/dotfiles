@@ -63,7 +63,6 @@ install-all() {
   want-to-install "zsh config" && install-zsh-config
   want-to-install "vim config" && install-vim-config
   want-to-install "git config" && install-git-config
-  want-to-install "gist commands" && install-gist-commands
   want-to-install "vscode config" && install-vscode-config
   want-to-install "claude config" && install-claude-config
   want-to-install "tmux config" && install-tmux-config
@@ -80,11 +79,45 @@ self-update() {
   fi
 
   log-info "[self-update]"
-  run-cmd "git pull origin -q --ff-only"
+  run-cmd "pull-repo ."
+
+  read -ra extras <<< "${CONFIG["extras"]}"
+  for name in "${extras[@]}"; do
+    local extra_dir="../.dotfiles-${name}"
+
+    if [ -d "${extra_dir}" ]; then
+      run-cmd pull-repo "${extra_dir}"
+    else
+      extra_url="$(git remote get-url origin | sed -E "s#dotfiles(\.git)?\$#dotfiles-${name}\1#")"
+
+      if [ "${extra_url}" = "$(git remote get-url origin)" ]; then
+        log-warning "can't work out the URL for ${name} from origin; skipping"
+      elif ! run-cmd "git clone -q ${extra_url} ${extra_dir}"; then
+        log-warning "could not clone ${extra_url}; continuing without ${name} config"
+      fi
+    fi
+  done
 
   # in case anything within this script changed during the pull, re-exec the
   # script (while skipping updating again).
   _DOTFILES_SELFUPDATE_COMPLETE=1 exec "${BASH_SOURCE[0]}" "${ARGS[@]}"
+}
+
+pull-repo() {
+  local dir="${1}"
+  local name
+  name="$(git -C "${dir}" rev-parse --show-toplevel 2>/dev/null)" || name="${dir}"
+  name="${name/#${HOME}/\~}"
+
+  if ! git -C "${dir}" diff --quiet || ! git -C "${dir}" diff --cached --quiet; then
+    log-warning "not updating ${name}: it has uncommitted changes (commit or stash them & run again)"
+    return 1
+  fi
+
+  if ! run-cmd "git -C ${dir} pull origin -q --ff-only"; then
+    log-warning "could not update ${name}; continuing with what's checked out"
+    return 1
+  fi
 }
 
 install-zsh-config() {
@@ -106,11 +139,6 @@ install-git-config() {
   is-config-set "git-gpgssh" && run-cmd setup-git-gpgssh
 }
 
-install-gist-commands() {
-  log-info "[gist]"
-  run-cmd setup-gist-commands
-}
-
 install-vscode-config() {
   log-info "[vscode]"
   install-dotfiles ".config/Code/User/" "vscode/*"
@@ -119,6 +147,12 @@ install-vscode-config() {
 install-claude-config() {
   log-info "[claude]"
   install-dotfiles ".claude/" "claude/*"
+
+  # extras may define claude config(s)
+  read -ra extras <<< "${CONFIG["extras"]}"
+  for name in "${extras[@]}"; do
+    install-dotfiles ".claude/" "../.dotfiles-${name}/claude/*"
+  done
 }
 
 install-tmux-config() {
@@ -344,6 +378,21 @@ store-config() {
   jq --null-input --sort-keys "${args[@]}" '$ARGS.named' > "$CONFIG_FILE"
 }
 
+add-extra() {
+  local name="${1}"
+
+  if ! [[ "${name}" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    log-error "invalid extra name: ${name}"
+    usage >&2
+    exit 1
+  fi
+
+  case " ${CONFIG["extras"]} " in
+    *" ${name} "*) ;;
+    *) CONFIG["extras"]="${CONFIG["extras"]:+${CONFIG["extras"]} }${name}" ;;
+  esac
+}
+
 parse-flag() {
   [ "${1}" == "--no"* ] && echo "no" || echo "yes"
 }
@@ -361,6 +410,15 @@ parse-options() {
         ;;
       -d|--dry-run)
         OPTIONS["dry-run"]="yes"
+        shift
+        ;;
+      --extra)
+        [ $# -ge 2 ] || { log-error "--extra requires a name"; usage >&2; exit 1; }
+        add-extra "${2}"
+        shift 2
+        ;;
+      --no-extras)
+        CONFIG["extras"]=""
         shift
         ;;
       --?(no)zsh-config)
@@ -381,10 +439,6 @@ parse-options() {
         ;;
       --?(no)git-config-gpgssh)
         CONFIG["git-gpgssh"]=$(parse-flag "${1}")
-        shift
-        ;;
-      --?(no)gist-commands)
-        CONFIG["gist-commands"]=$(parse-flag "${1}")
         shift
         ;;
       --?(no)vscode-config)
@@ -433,28 +487,31 @@ parse-options() {
 }
 
 usage() {
-  echo "Usage:"
-  echo "	dot [options]"
-  echo
-  echo "Options:"
-  echo "	-p, --[no-]prompt	Prompt to install each item"
-  echo "	-c, --choose	Require opting in to install each item"
-  echo "	-d, --dry-run	Do not actually run commands"
-  echo "	--[no-]fedora-settings"
-  echo "	--[no-]alpine-settings"
-  echo "	--[no-]claude-config"
-  echo "	--[no-]git-config-gpgssh"
-  echo "	--[no-]git-config-sshcmd"
-  echo "	--[no-]git-config"
-  echo "	--[no-]gist-commands"
-  echo "	--[no-]homebrew"
-  echo "	--[no-]miscellaneous-config"
-  echo "	--[no-]osx-settings"
-  echo "	--[no-]tmux-config"
-  echo "	--[no-]vim-config"
-  echo "	--[no-]vscode-config"
-  echo "	--[no-]zsh-config"
-  echo "	--help"
+cat <<'EOF'
+Usage:
+	dot [options]
+
+Options:
+	-p, --[no-]prompt	  Prompt to install each item
+	-c, --choose	      Require opting in to install each item
+	-d, --dry-run	      Do not actually run commands
+  --extra <name>      Also use ../.dotfiles-<name> (repeatable, saved)
+  --no-extras         Forget saved extras (combine with --extra to replace them)
+	--[no-]fedora-settings
+	--[no-]alpine-settings
+	--[no-]claude-config
+	--[no-]git-config-gpgssh
+	--[no-]git-config-sshcmd
+	--[no-]git-config
+	--[no-]homebrew
+	--[no-]miscellaneous-config
+	--[no-]osx-settings
+	--[no-]tmux-config
+	--[no-]vim-config
+	--[no-]vscode-config
+	--[no-]zsh-config
+	--help
+EOF
 }
 
 if [ "${BASH_SOURCE[0]}" == "${0}" ]; then

@@ -1,8 +1,7 @@
 source-local "zsh/plugins.zsh"
 
-local dotfiles_dir="${${(%):-%x}:A:h:h}"
+path=(${^DOTFILES_DIRS}/bin ~/.local/bin /usr/local/bin /usr/local/sbin $path)
 
-export PATH="${dotfiles_dir}/bin:${dotfiles_dir}/gists/bin:${HOME}/.local/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 export DISABLE_AUTO_TITLE=true
 export LESS="$LESS -FRX"
 export AUTOENV_ENV_FILENAME=".autoenv"
