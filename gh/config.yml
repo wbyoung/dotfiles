@@ -3,7 +3,7 @@ color_labels: enabled
 spinner: enabled
 aliases:
   co: pr checkout
-  cpr: |
+  pr-text: |
     !set -e
 
     declare root title body
@@ -31,9 +31,41 @@ aliases:
       body="$(printf '%s\n' "$body" | "$prettier" --parser markdown --prose-wrap never)"
     fi
 
+    printf '%s\n%s\n' "$title" "$body"
+
+  cpr: |
+    !set -e
+
+    if [ "$(gh pr view --json state -q .state 2>/dev/null)" = OPEN ]; then
+      echo "an open PR already exists for this branch; use 'gh upr'" >&2
+      exit 1
+    fi
+
+    declare text title body
+    text="$(gh pr-text)"
+    title="$(printf '%s\n' "$text" | head -n 1)"
+    body="$(printf '%s\n' "$text" | tail -n +2)"
+
     git push -u origin HEAD
     gh pr create --title "$title" --body "$body"
     gh pr view --web
+
+  upr: |
+    !set -e
+
+    if [ "$(gh pr view --json state -q .state 2>/dev/null)" != OPEN ]; then
+      echo "no open PR for this branch; use 'gh cpr'" >&2
+      exit 1
+    fi
+
+    declare text title body
+    text="$(gh pr-text)"
+    title="$(printf '%s\n' "$text" | head -n 1)"
+    body="$(printf '%s\n' "$text" | tail -n +2)"
+
+    gh pr edit --title "$title" --body "$body"
+    gh pr view --web
+
   next: |
     !set -e
     declare -r next="${1:-next}"
