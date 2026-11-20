@@ -64,6 +64,7 @@ install-all() {
   want-to-install "vim config" && install-vim-config
   want-to-install "git config" && install-git-config
   want-to-install "vscode config" && install-vscode-config
+  want-to-install "k8s config" && install-k8s-config
   want-to-install "claude config" && install-claude-config
   want-to-install "tmux config" && install-tmux-config
   want-to-install "miscellaneous config" && install-miscellaneous-config
@@ -144,6 +145,20 @@ install-vscode-config() {
   install-dotfiles ".config/Code/User/" "vscode/*"
 }
 
+install-k8s-config() {
+  log-info "[k8s]"
+
+  # there are (currently) no stern configs locally. any/all are defined in
+  # private repos, but that may change, so this is still here.
+  install-dotfiles ".config/stern/" "stern/*"
+
+  # extras may define stern config(s)
+  read -ra extras <<< "${CONFIG["extras"]}"
+  for name in "${extras[@]}"; do
+    install-dotfiles ".config/stern/" "../.dotfiles-${name}/stern/*"
+  done
+}
+
 install-claude-config() {
   log-info "[claude]"
   install-dotfiles ".claude/" "claude/*"
@@ -216,9 +231,13 @@ install-dotfiles() {
     target_prefix=""
   fi
 
+  local restore_nullglob
+  restore_nullglob=$(shopt -p nullglob)
+  shopt -s nullglob
   for file in $@; do
     run-cmd link-dotfile "${file}" "${target_prefix}"
   done
+  eval "${restore_nullglob}"
 }
 
 link-dotfile() {
@@ -445,6 +464,10 @@ parse-options() {
         CONFIG["vscode-config"]=$(parse-flag "${1}")
         shift
         ;;
+      --?(no)k8s-config)
+        CONFIG["k8s-config"]=$(parse-flag "${1}")
+        shift
+        ;;
       --?(no)claude-config)
         CONFIG["claude-config"]=$(parse-flag "${1}")
         shift
@@ -499,6 +522,7 @@ Options:
   --no-extras         Forget saved extras (combine with --extra to replace them)
 	--[no-]fedora-settings
 	--[no-]alpine-settings
+	--[no-]k8s-config
 	--[no-]claude-config
 	--[no-]git-config-gpgssh
 	--[no-]git-config-sshcmd
