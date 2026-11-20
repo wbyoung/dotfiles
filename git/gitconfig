@@ -12,6 +12,8 @@
     fpush      = push --force-with-lease
     wtr        = worktree remove
     wtu        = worktree unlock
+    xref      = "!f() { git update-ref \"refs/x/${1}\" \"x-${1}\"; };f"
+    xrefs      = for-each-ref refs/x/ --format='%(refname:lstrip=2)'
     unstage    = reset HEAD --
     last       = log -1 HEAD
     out        = log --branches --not --remotes --decorate --oneline
