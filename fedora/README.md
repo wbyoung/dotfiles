@@ -5,6 +5,7 @@
 Some issues that needed to be addressed after first installing Fedora 42:
 
 - The machine I have required disabling secure boot in the BIOS settings in order to start from the flash drive.
+- Another machine I set up when Fedora 45 was available. Overwriting a Fedora 42 USB stick with Fedora 45 failed silently, and I accidentally installed Fedora 42. That required booting with basic graphics and reverting the basic graphics after upgrading the system: `sudo grubby --update-kernel=ALL --remove-args="nomodeset"` & validate that there is no `nomodeset` in `cat /proc/cmdline`.
 - Package update was not working in the UI (which could have been network issues), so `dnf` was used to actually update software.
 - I couldn't get VIM local and/or remote copy to work exactly how I wanted via focus events and [ended up with a compromise](https://github.com/wbyoung/dotfiles/commit/69bf7f0da4c1eb59b7cc19936dc6b75a22d02462).
 
