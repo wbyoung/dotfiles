@@ -29,6 +29,7 @@ install-packages() {
   log-info "Requesting admin password prior to installing apps"
   run-cmd sudo -v
 
+  run-cmd install-zsh
   run-cmd install-gnome-extensions
   run-cmd install-brave
   run-cmd install-vivaldi
@@ -114,6 +115,12 @@ write-ptyxis-settings() {
     dconf write "${profile_path}/preserve-directory" "'safe'"
     dconf write /org/gnome/Ptyxis/profile-uuids "$current_ids"
   fi
+}
+
+install-zsh() {
+  sudo dnf --assumeyes --quiet install 2> /dev/null \
+    zsh
+  chsh -s /usr/bin/zsh
 }
 
 install-gnome-extensions() {
