@@ -2,6 +2,8 @@
 .autoenv
 .autoenv.leave
 .DS_Store
+/.pnpm-store/
+/.work/
 *.code-workspace
 *~
 **/.claude/settings.local.json
