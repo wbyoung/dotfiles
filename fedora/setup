@@ -54,6 +54,9 @@ write-gnome-settings() {
   gsettings set org.gnome.desktop.input-sources xkb-options "['lv3:rwin_switch', 'caps:escape_shifted_capslock', 'compose:ralt']"
   gsettings set org.gnome.settings-daemon.plugins.housekeeping donation-reminder-enabled false
 
+  # middle click paset
+  gsettings set org.gnome.desktop.interface gtk-enable-primary-paste true
+
   # set icon for code folder
   mkdir -p "$HOME/Code"
   gio set -t string "$HOME/Code" metadata::custom-icon file:///usr/share/icons/Adwaita/scalable/places/folder-documents.svg
